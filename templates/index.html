@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Judge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between">
+                <div class="flex space-x-7">
+                    <div>
+                        <a href="/" class="flex items-center py-4 px-2">
+                            <span class="font-semibold text-gray-500 text-lg">Online Judge</span>
+                        </a>
+                    </div>
+                    <div class="hidden md:flex items-center space-x-1">
+                        <a href="/problems" class="py-4 px-2 text-gray-500 font-semibold hover:text-green-500 transition duration-300">Задачи</a>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center space-x-3 ">
+                    {{if .UserName}}
+                        <span class="py-2 px-2 font-medium text-gray-500">{{.UserName}}</span>
+                        <!-- Logout logic would require clearing the cookie, for now just a link -->
+                        <a href="/auth/google/login" class="py-2 px-2 font-medium text-gray-500 rounded hover:bg-red-500 hover:text-white transition duration-300">Сменить аккаунт</a>
+                    {{else}}
+                        <a href="/auth/google/login" class="py-2 px-2 font-medium text-gray-500 rounded hover:bg-green-500 hover:text-white transition duration-300">Войти через Google</a>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-16 text-center">
+        <h1 class="text-4xl font-bold mb-4">Добро пожаловать в Online Judge</h1>
+        <p class="text-xl mb-8">Практикуйтесь в программировании и улучшайте свои навыки.</p>
+        <a href="/problems" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            Начать решать
+        </a>
+    </div>
+</body>
+</html>

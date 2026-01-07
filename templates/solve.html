@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Решение задачи - Online Judge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <nav class="bg-white shadow-lg mb-8">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between">
+                <div class="flex space-x-7">
+                    <div>
+                        <a href="/" class="flex items-center py-4 px-2">
+                            <span class="font-semibold text-gray-500 text-lg">Online Judge</span>
+                        </a>
+                    </div>
+                    <div class="hidden md:flex items-center space-x-1">
+                        <a href="/problems" class="py-4 px-2 text-gray-500 font-semibold hover:text-green-500 transition duration-300">Задачи</a>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center space-x-3 ">
+                    {{if .UserName}}
+                        <span class="py-2 px-2 font-medium text-gray-500">{{.UserName}}</span>
+                    {{else}}
+                        <a href="/auth/google/login" class="py-2 px-2 font-medium text-gray-500 rounded hover:bg-green-500 hover:text-white transition duration-300">Войти</a>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4">
+        <!-- Messages -->
+        {{if eq .ErrorMsg "wait"}}
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <strong class="font-bold">Подождите!</strong>
+            <span class="block sm:inline">Вы можете отправить следующее решение через <strong>{{.SecondsLeft}}</strong> секунд.</span>
+        </div>
+        {{end}}
+        {{if eq .ErrorMsg "empty"}}
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <strong class="font-bold">Ошибка!</strong>
+            <span class="block sm:inline">Исходный код не может быть пустым.</span>
+        </div>
+        {{end}}
+        {{if .HasPending}}
+        <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <strong class="font-bold">В обработке!</strong>
+            <span class="block sm:inline">Ваше решение находится в очереди на проверку. <a href="/history?id={{.Problem.ID}}" class="underline font-bold">Посмотреть статус</a></span>
+        </div>
+        {{end}}
+
+        <div class="flex flex-col md:flex-row gap-6">
+            <!-- Left Column: Problem Description -->
+            <div class="md:w-1/2">
+                <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+                    <div class="flex justify-between items-start mb-4">
+                        <h2 class="text-2xl font-bold">{{.Problem.Title}}</h2>
+                        <div class="text-right text-sm text-gray-600">
+                            <p>Лимит времени: <span class="font-bold">{{.Problem.TimeLimit}}с</span></p>
+                            <p>Лимит памяти: <span class="font-bold">{{.Problem.MemoryLimit}}МБ</span></p>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <a href="/history?id={{.Problem.ID}}" class="text-blue-500 hover:text-blue-700 font-semibold text-sm">
+                            🕒 История попыток
+                        </a>
+                    </div>
+
+                    <p class="mb-6 text-gray-800">{{.Problem.Description}}</p>
+
+                    <h3 class="font-bold text-lg mb-2">Примеры</h3>
+                    <div class="overflow-x-auto mb-6">
+                        <table class="min-w-full bg-white border border-gray-300">
+                            <thead>
+                                <tr class="bg-gray-100">
+                                    <th class="py-2 px-4 border-b text-left font-semibold text-gray-600">Ввод</th>
+                                    <th class="py-2 px-4 border-b text-left font-semibold text-gray-600">Вывод</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{range .Problem.Samples}}
+                                <tr>
+                                    <td class="py-2 px-4 border-b font-mono text-sm bg-gray-50 whitespace-pre-wrap">{{.Input}}</td>
+                                    <td class="py-2 px-4 border-b font-mono text-sm bg-gray-50 whitespace-pre-wrap">{{.ExpectedOutput}}</td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Code Editor -->
+            <div class="md:w-1/2 bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4 h-fit">
+                <h2 class="text-2xl font-bold mb-4">Редактор кода</h2>
+                <form action="/submit" method="POST">
+                    <input type="hidden" name="problem_id" value="{{.Problem.ID}}">
+
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="language_id">
+                            Язык программирования
+                        </label>
+                        <select class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="language_id" name="language_id">
+                            {{range .Languages}}
+                            <option value="{{.ID}}">{{.Name}}</option>
+                            {{end}}
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="source_code">
+                            Исходный код
+                        </label>
+                        <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline h-64 font-mono" id="source_code" name="source_code" placeholder="print('Hello World')"></textarea>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
+                            Отправить
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

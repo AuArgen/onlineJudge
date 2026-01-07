@@ -1,0 +1,16 @@
+# Environment variables
+.env
+
+# Binary
+online-judge
+main
+
+# Database (SQLite - if you used it before)
+onlinejudge.db
+
+# IDEs
+.idea/
+.vscode/
+
+# OS
+.DS_Store
