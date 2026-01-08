@@ -2,51 +2,65 @@ package models
 
 import "time"
 
-type TestCase struct {
-	Input          string
-	ExpectedOutput string
+// User represents a registered user
+type User struct {
+	ID        int
+	GoogleID  string
+	Email     string
+	Name      string
+	Role      string // 'user', 'admin'
+	CreatedAt time.Time
 }
 
+// TestCase represents a single test case
+type TestCase struct {
+	ID             int
+	ProblemID      int
+	Input          string
+	ExpectedOutput string
+	IsSample       bool
+}
+
+// Problem defines the structure for a coding problem
 type Problem struct {
 	ID          int
+	AuthorID    int
+	AuthorName  string // For display
 	Title       string
 	Description string
 	Samples     []TestCase
 	TestCases   []TestCase
 	TimeLimit   float64
 	MemoryLimit int
+	Visibility  string // 'private', 'link', 'public'
+	Status      string // 'draft', 'pending_review', 'approved'
+	CreatedAt   time.Time
 }
 
+// Submission represents the data sent by a user to be judged
 type Submission struct {
-	SourceCode  string  `json:"source_code"`
-	LanguageID  int     `json:"language_id"`
-	Stdin       string  `json:"stdin"`
+	SourceCode  string
+	LanguageID  int
+	Stdin       string
 	TimeLimit   float64
 	MemoryLimit int
 }
 
-// SubmissionRecord - структура для сохранения истории попыток
+// SubmissionRecord stores the history of a submission
 type SubmissionRecord struct {
 	ID            int
+	UserID        int
 	UserName      string
 	ProblemID     int
 	ProblemTitle  string
 	Language      string
-	SourceCode    string // Added field to store the code
+	SourceCode    string
 	Status        string
 	ExecutionTime string
 	Timestamp     time.Time
 }
 
-type Judge0Response struct {
-	Stdout string `json:"stdout"`
-	Stderr string `json:"stderr"`
-	Status struct {
-		Description string `json:"description"`
-	} `json:"status"`
-	CompileOutput string `json:"compile_output"`
-}
-
+// GoogleUser holds user information from Google OAuth
 type GoogleUser struct {
 	ID            string `json:"id"`
 	Email         string `json:"email"`
@@ -58,7 +72,8 @@ type GoogleUser struct {
 	Locale        string `json:"locale"`
 }
 
+// Language represents a programming language
 type Language struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID   int
+	Name string
 }

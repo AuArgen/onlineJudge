@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -13,192 +14,51 @@ import (
 	"time"
 )
 
-// --- Data & Storage ---
+// --- Structs for Template Data ---
 
-var Problems = []models.Problem{
-	{
-		ID:           1,
-		Title:        "Сумма двух чисел",
-		Description:  "Напишите программу, которая считывает два целых числа A и B и выводит их сумму.",
-		TimeLimit:    1.0,
-		MemoryLimit:  256, // Changed to 256MB
-		Samples: []models.TestCase{
-			{"3 5", "8"},
-			{"10 20", "30"},
-		},
-		TestCases: []models.TestCase{
-			{"3 5", "8"},
-			{"10 20", "30"},
-			{"-5 5", "0"},
-			{"100 200", "300"},
-			{"-10 -20", "-30"},
-		},
-	},
-	{
-		ID:           2,
-		Title:        "Четное или нечетное",
-		Description:  "Дано целое число N. Если оно четное, выведите 'EVEN', иначе 'ODD'.",
-		TimeLimit:    0.5,
-		MemoryLimit:  256, // Changed to 256MB
-		Samples: []models.TestCase{
-			{"4", "EVEN"},
-			{"3", "ODD"},
-		},
-		TestCases: []models.TestCase{
-			{"4", "EVEN"},
-			{"3", "ODD"},
-			{"0", "EVEN"},
-			{"-2", "EVEN"},
-			{"101", "ODD"},
-			{"-101", "ODD"},
-		},
-	},
-	{
-		ID:           3,
-		Title:        "Максимум из трех",
-		Description:  "Даны три целых числа. Найдите максимальное из них.",
-		TimeLimit:    1.0,
-		MemoryLimit:  256, // Changed to 256MB
-		Samples: []models.TestCase{
-			{"1 5 3", "5"},
-			{"10 20 15", "20"},
-		},
-		TestCases: []models.TestCase{
-			{"1 5 3", "5"},
-			{"10 10 10", "10"},
-			{"-1 -5 -3", "-1"},
-			{"100 20 5", "100"},
-			{"5 20 100", "100"},
-		},
-	},
-	{
-		ID:           4,
-		Title:        "Факториал",
-		Description:  "Вычислите факториал числа N (0 <= N <= 10).",
-		TimeLimit:    1.0,
-		MemoryLimit:  256, // Changed to 256MB
-		Samples: []models.TestCase{
-			{"5", "120"},
-			{"3", "6"},
-		},
-		TestCases: []models.TestCase{
-			{"5", "120"},
-			{"0", "1"},
-			{"1", "1"},
-			{"3", "6"},
-			{"10", "3628800"},
-		},
-	},
-	{
-		ID:           5,
-		Title:        "Квадрат числа",
-		Description:  "Считайте число N и выведите его квадрат.",
-		TimeLimit:    0.5,
-		MemoryLimit:  256, // Changed to 256MB
-		Samples: []models.TestCase{
-			{"5", "25"},
-			{"2", "4"},
-		},
-		TestCases: []models.TestCase{
-			{"5", "25"},
-			{"2", "4"},
-			{"10", "100"},
-			{"-5", "25"},
-			{"0", "0"},
-		},
-	},
-	{
-		ID:           6,
-		Title:        "Сумма от 1 до N",
-		Description:  "Вычислите сумму всех целых чисел от 1 до N.",
-		TimeLimit:    1.0,
-		MemoryLimit:  256, // Changed to 256MB
-		Samples: []models.TestCase{
-			{"5", "15"},
-			{"3", "6"},
-		},
-		TestCases: []models.TestCase{
-			{"5", "15"},
-			{"1", "1"},
-			{"10", "55"},
-			{"100", "5050"},
-			{"3", "6"},
-		},
-	},
-	{
-		ID:           7,
-		Title:        "Последняя цифра",
-		Description:  "Дано число N. Выведите его последнюю цифру.",
-		TimeLimit:    0.5,
-		MemoryLimit:  256, // Changed to 256MB
-		Samples: []models.TestCase{
-			{"123", "3"},
-			{"5", "5"},
-		},
-		TestCases: []models.TestCase{
-			{"123", "3"},
-			{"5", "5"},
-			{"10", "0"},
-			{"123456789", "9"},
-			{"1001", "1"},
-		},
-	},
-	{
-		ID:           8,
-		Title:        "Количество цифр",
-		Description:  "Дано положительное число N. Выведите количество цифр в нем.",
-		TimeLimit:    0.5,
-		MemoryLimit:  256, // Changed to 256MB
-		Samples: []models.TestCase{
-			{"123", "3"},
-			{"5", "1"},
-		},
-		TestCases: []models.TestCase{
-			{"123", "3"},
-			{"5", "1"},
-			{"1000", "4"},
-			{"99", "2"},
-			{"1234567890", "10"},
-		},
-	},
-	{
-		ID:           9,
-		Title:        "Делится ли на 3?",
-		Description:  "Дано число N. Если оно делится на 3, выведите 'YES', иначе 'NO'.",
-		TimeLimit:    0.5,
-		MemoryLimit:  256, // Changed to 256MB
-		Samples: []models.TestCase{
-			{"9", "YES"},
-			{"10", "NO"},
-		},
-		TestCases: []models.TestCase{
-			{"9", "YES"},
-			{"10", "NO"},
-			{"3", "YES"},
-			{"0", "YES"},
-			{"123", "YES"},
-			{"124", "NO"},
-		},
-	},
-	{
-		ID:           10,
-		Title:        "Приветствие",
-		Description:  "Считайте имя (строка) и выведите 'Hello, [Имя]!'",
-		TimeLimit:    0.5,
-		MemoryLimit:  256, // Changed to 256MB
-		Samples: []models.TestCase{
-			{"World", "Hello, World!"},
-			{"Alice", "Hello, Alice!"},
-		},
-		TestCases: []models.TestCase{
-			{"World", "Hello, World!"},
-			{"Alice", "Hello, Alice!"},
-			{"Bob", "Hello, Bob!"},
-			{"Go", "Hello, Go!"},
-			{"Python", "Hello, Python!"},
-		},
-	},
+// Helper struct for solved list
+type SolvedUser struct {
+	UserName      string
+	SubmissionID  int
+	ExecutionTime string
+	Language      string
 }
+
+// SolvedListData holds data for the solved.html page
+type SolvedListData struct {
+	Problem           models.Problem
+	SolvedList        []SolvedUser
+	UserName          string
+	CurrentUserSolved bool
+	TotalCount        int
+	CurrentPage       int
+	TotalPages        int
+	HasPrev           bool
+	HasNext           bool
+	PrevPage          int
+	NextPage          int
+}
+
+// ProblemData holds the problem info plus the solved count
+type ProblemData struct {
+	models.Problem
+	SolvedCount int
+	IsOwner     bool
+}
+
+// PageData holds all info needed for the problems page
+type PageData struct {
+	Problems    []ProblemData
+	User        *models.User
+	CurrentPage int
+	TotalPages  int
+	HasPrev     bool
+	HasNext     bool
+	PrevPage    int
+	NextPage    int
+}
+
+// --- Data & Storage ---
 
 var Languages = []models.Language{
 	{ID: 71, Name: "Python (3.8+)"},
@@ -208,28 +68,24 @@ var Languages = []models.Language{
 	{ID: 60, Name: "Go"},
 }
 
-// Global storage
 var (
 	LastSubmission = make(map[string]time.Time)
-	RateLimitMutex sync.Mutex // Protects LastSubmission
+	RateLimitMutex sync.Mutex
 )
 
 // --- Queue System ---
 
 type Job struct {
-	RecordID   int64 // Changed to int64 for DB ID
+	RecordID   int64
 	Submission models.Submission
 	Problem    models.Problem
 }
 
-// Buffered channel for the queue
 var SubmissionQueue = make(chan Job, 100)
 
-// StartWorker starts the background workers that process submissions
 func StartWorker() {
 	numWorkers := 4
 	fmt.Printf("Starting %d workers...\n", numWorkers)
-
 	for i := 0; i < numWorkers; i++ {
 		go func(workerID int) {
 			fmt.Printf("Worker %d started\n", workerID)
@@ -246,7 +102,26 @@ func processJob(job Job) {
 	statusMessage := "Принято"
 	var lastResult compiler.ExecutionResult
 
-	for i, testCase := range job.Problem.TestCases {
+	// Fetch test cases from DB
+	rows, err := database.DB.Query("SELECT input, expected_output FROM test_cases WHERE problem_id = $1 ORDER BY id", job.Problem.ID)
+	if err != nil {
+		fmt.Println("Error fetching test cases:", err)
+		return
+	}
+	defer rows.Close()
+
+	var testCases []models.TestCase
+	for rows.Next() {
+		var tc models.TestCase
+		rows.Scan(&tc.Input, &tc.ExpectedOutput)
+		testCases = append(testCases, tc)
+	}
+
+	if len(testCases) == 0 {
+		statusMessage = "Ошибка: Нет тестов"
+	}
+
+	for i, testCase := range testCases {
 		job.Submission.Stdin = testCase.Input
 		result, err := compiler.ExecuteCode(job.Submission)
 		lastResult = result
@@ -274,8 +149,7 @@ func processJob(job Job) {
 		}
 	}
 
-	// Update the record in DB (Postgres uses $1, $2, etc.)
-	_, err := database.DB.Exec("UPDATE submissions SET status = $1, execution_time = $2 WHERE id = $3",
+	_, err = database.DB.Exec("UPDATE submissions SET status = $1, execution_time = $2 WHERE id = $3",
 		statusMessage, lastResult.ExecutionTime, job.RecordID)
 	if err != nil {
 		fmt.Println("Error updating submission:", err)
@@ -284,75 +158,84 @@ func processJob(job Job) {
 
 // --- Handlers ---
 
-// ProblemData holds the problem info plus the solved count
-type ProblemData struct {
-	models.Problem
-	SolvedCount int
-}
+// Helper to get problem from DB
+func getProblem(id int) (*models.Problem, error) {
+	var p models.Problem
+	err := database.DB.QueryRow("SELECT id, title, description, time_limit, memory_limit, author_id, visibility, status FROM problems WHERE id = $1", id).
+		Scan(&p.ID, &p.Title, &p.Description, &p.TimeLimit, &p.MemoryLimit, &p.AuthorID, &p.Visibility, &p.Status)
+	if err != nil {
+		return nil, err
+	}
 
-// PageData holds all info needed for the problems page
-type PageData struct {
-	Problems    []ProblemData
-	UserName    string
-	CurrentPage int
-	TotalPages  int
-	HasPrev     bool
-	HasNext     bool
-	PrevPage    int
-	NextPage    int
-}
-
-func HandleProblems(w http.ResponseWriter, r *http.Request) {
-	userName := GetUserName(r)
-
-	// 1. Calculate Solved Counts using DB
-	solvedCounts := make(map[int]int)
-	rows, err := database.DB.Query("SELECT problem_id, COUNT(DISTINCT user_name) FROM submissions WHERE status = 'Принято' GROUP BY problem_id")
+	// Get Samples
+	rows, err := database.DB.Query("SELECT id, input, expected_output, is_sample FROM test_cases WHERE problem_id = $1 AND is_sample = true", id)
 	if err == nil {
 		defer rows.Close()
 		for rows.Next() {
-			var pID, count int
-			rows.Scan(&pID, &count)
-			solvedCounts[pID] = count
+			var tc models.TestCase
+			rows.Scan(&tc.ID, &tc.Input, &tc.ExpectedOutput, &tc.IsSample)
+			p.Samples = append(p.Samples, tc)
 		}
 	}
+	return &p, nil
+}
 
-	// 2. Pagination Logic
+func HandleProblems(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r)
+
+	// Pagination
 	pageStr := r.URL.Query().Get("page")
 	page, err := strconv.Atoi(pageStr)
 	if err != nil || page < 1 {
 		page = 1
 	}
-
 	itemsPerPage := 100
-	totalItems := len(Problems)
-	totalPages := (totalItems + itemsPerPage - 1) / itemsPerPage
+	offset := (page - 1) * itemsPerPage
 
-	if page > totalPages && totalPages > 0 {
-		page = totalPages
+	// Query problems (Public OR Own)
+	var rows *sql.Rows
+	var totalItems int
+
+	// Count total
+	countQuery := "SELECT COUNT(*) FROM problems WHERE status = 'approved'"
+	if user != nil {
+		countQuery += fmt.Sprintf(" OR author_id = %d", user.ID)
 	}
+	database.DB.QueryRow(countQuery).Scan(&totalItems)
 
-	start := (page - 1) * itemsPerPage
-	end := start + itemsPerPage
-	if end > totalItems {
-		end = totalItems
+	// Fetch items
+	query := "SELECT id, title, author_id, status FROM problems WHERE status = 'approved'"
+	if user != nil {
+		query += fmt.Sprintf(" OR author_id = %d", user.ID)
 	}
+	query += fmt.Sprintf(" ORDER BY id ASC LIMIT %d OFFSET %d", itemsPerPage, offset)
 
-	// 3. Prepare Data Slice
+	rows, err = database.DB.Query(query)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
 	var displayProblems []ProblemData
-	if start < totalItems {
-		for _, p := range Problems[start:end] {
-			count := solvedCounts[p.ID]
-			displayProblems = append(displayProblems, ProblemData{
-				Problem:     p,
-				SolvedCount: count,
-			})
-		}
+
+	for rows.Next() {
+		var p models.Problem
+		rows.Scan(&p.ID, &p.Title, &p.AuthorID, &p.Status)
+
+		// Count solved
+		var count int
+		database.DB.QueryRow("SELECT COUNT(DISTINCT user_id) FROM submissions WHERE problem_id = $1 AND status = 'Принято'", p.ID).Scan(&count)
+
+		isOwner := user != nil && user.ID == p.AuthorID
+		displayProblems = append(displayProblems, ProblemData{Problem: p, SolvedCount: count, IsOwner: isOwner})
 	}
+
+	totalPages := (totalItems + itemsPerPage - 1) / itemsPerPage
 
 	data := PageData{
 		Problems:    displayProblems,
-		UserName:    userName,
+		User:        user,
 		CurrentPage: page,
 		TotalPages:  totalPages,
 		HasPrev:     page > 1,
@@ -365,30 +248,52 @@ func HandleProblems(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, data)
 }
 
-// Helper struct for solved list
-type SolvedUser struct {
-	UserName      string
-	SubmissionID  int
-	ExecutionTime string
-	Language      string
+func HandleCreateProblem(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r)
+	if user == nil {
+		http.Redirect(w, r, "/auth/google/login", http.StatusTemporaryRedirect)
+		return
+	}
+
+	if r.Method == http.MethodPost {
+		title := r.FormValue("title")
+		description := r.FormValue("description")
+		timeLimit, _ := strconv.ParseFloat(r.FormValue("time_limit"), 64)
+		memoryLimit, _ := strconv.Atoi(r.FormValue("memory_limit"))
+
+		// Default to private draft
+		var problemID int
+		err := database.DB.QueryRow("INSERT INTO problems (author_id, title, description, time_limit, memory_limit, visibility, status) VALUES ($1, $2, $3, $4, $5, 'private', 'draft') RETURNING id",
+			user.ID, title, description, timeLimit, memoryLimit).Scan(&problemID)
+
+		if err != nil {
+			http.Error(w, "Error creating problem: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Add Sample Test Case
+		sampleInput := r.FormValue("sample_input")
+		sampleOutput := r.FormValue("sample_output")
+		if sampleInput != "" {
+			database.DB.Exec("INSERT INTO test_cases (problem_id, input, expected_output, is_sample) VALUES ($1, $2, $3, true)",
+				problemID, sampleInput, sampleOutput)
+		}
+
+		http.Redirect(w, r, fmt.Sprintf("/edit-problem?id=%d", problemID), http.StatusSeeOther)
+		return
+	}
+
+	tmpl := template.Must(template.ParseFiles("templates/create_problem.html"))
+	tmpl.Execute(w, user)
 }
 
-// SolvedListData holds data for the solved.html page
-type SolvedListData struct {
-	Problem           models.Problem
-	SolvedList        []SolvedUser
-	UserName          string
-	CurrentUserSolved bool
-	TotalCount        int
-	CurrentPage       int
-	TotalPages        int
-	HasPrev           bool
-	HasNext           bool
-	PrevPage          int
-	NextPage          int
-}
+func HandleEditProblem(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r)
+	if user == nil {
+		http.Redirect(w, r, "/auth/google/login", http.StatusTemporaryRedirect)
+		return
+	}
 
-func HandleSolvedList(w http.ResponseWriter, r *http.Request) {
 	idStr := r.URL.Query().Get("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -396,100 +301,158 @@ func HandleSolvedList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var p models.Problem
-	found := false
-	for _, problem := range Problems {
-		if problem.ID == id {
-			p = problem
-			found = true
-			break
-		}
-	}
-
-	if !found {
+	p, err := getProblem(id)
+	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
 
-	userName := GetUserName(r)
-	currentUserSolved := false
-
-	// Check if current user solved it
-	if userName != "" {
-		var count int
-		err := database.DB.QueryRow("SELECT COUNT(*) FROM submissions WHERE problem_id = $1 AND user_name = $2 AND status = 'Принято'", id, userName).Scan(&count)
-		if err == nil && count > 0 {
-			currentUserSolved = true
-		}
+	// Check ownership
+	if p.AuthorID != user.ID && user.Role != "admin" {
+		http.Error(w, "Access Denied", http.StatusForbidden)
+		return
 	}
 
-	// Get solved list from DB (Latest accepted submission per user)
-	// Postgres specific query
-	query := `
-		SELECT s.id, s.user_name, s.execution_time, s.language
-		FROM submissions s
-		INNER JOIN (
-			SELECT user_name, MAX(id) as max_id
-			FROM submissions
-			WHERE problem_id = $1 AND status = 'Принято'
-			GROUP BY user_name
-		) grouped_s ON s.id = grouped_s.max_id
-		ORDER BY s.id DESC
-	`
-	
-	rows, err := database.DB.Query(query, id)
-	var allSolved []SolvedUser
+	if r.Method == http.MethodPost {
+		// If approved, prevent editing (unless admin)
+		if p.Status == "approved" && user.Role != "admin" {
+			http.Error(w, "Cannot edit approved problem", http.StatusForbidden)
+			return
+		}
+
+		// Update Problem Details
+		title := r.FormValue("title")
+		description := r.FormValue("description")
+		timeLimit, _ := strconv.ParseFloat(r.FormValue("time_limit"), 64)
+		memoryLimit, _ := strconv.Atoi(r.FormValue("memory_limit"))
+		status := r.FormValue("status")
+
+		// Validate status transition
+		if status == "pending_review" {
+			// Change visibility to private while reviewing
+			_, err := database.DB.Exec("UPDATE problems SET title=$1, description=$2, time_limit=$3, memory_limit=$4, status=$5, visibility='private' WHERE id=$6",
+				title, description, timeLimit, memoryLimit, status, id)
+			if err != nil {
+				http.Error(w, "Error updating problem: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+		} else {
+			// Draft
+			_, err := database.DB.Exec("UPDATE problems SET title=$1, description=$2, time_limit=$3, memory_limit=$4, status=$5 WHERE id=$6",
+				title, description, timeLimit, memoryLimit, status, id)
+			if err != nil {
+				http.Error(w, "Error updating problem: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+
+		// Add New Test Case
+		newInput := r.FormValue("new_input")
+		newOutput := r.FormValue("new_output")
+		isSample := r.FormValue("is_sample") == "on"
+
+		if newInput != "" {
+			_, err = database.DB.Exec("INSERT INTO test_cases (problem_id, input, expected_output, is_sample) VALUES ($1, $2, $3, $4)",
+				id, newInput, newOutput, isSample)
+			if err != nil {
+				http.Error(w, "Error adding test case: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+
+		http.Redirect(w, r, fmt.Sprintf("/edit-problem?id=%d", id), http.StatusSeeOther)
+		return
+	}
+
+	// Fetch all test cases for editing
+	rows, err := database.DB.Query("SELECT id, input, expected_output, is_sample FROM test_cases WHERE problem_id = $1 ORDER BY id", id)
+	var allTestCases []models.TestCase
 	if err == nil {
 		defer rows.Close()
 		for rows.Next() {
-			var u SolvedUser
-			rows.Scan(&u.SubmissionID, &u.UserName, &u.ExecutionTime, &u.Language)
-			allSolved = append(allSolved, u)
+			var tc models.TestCase
+			rows.Scan(&tc.ID, &tc.Input, &tc.ExpectedOutput, &tc.IsSample)
+			allTestCases = append(allTestCases, tc)
 		}
 	}
+	p.TestCases = allTestCases
 
-	// Pagination
-	pageStr := r.URL.Query().Get("page")
-	page, err := strconv.Atoi(pageStr)
-	if err != nil || page < 1 {
-		page = 1
+	data := struct {
+		Problem models.Problem
+		User    *models.User
+	}{
+		Problem: *p,
+		User:    user,
 	}
 
-	itemsPerPage := 100
-	totalItems := len(allSolved)
-	totalPages := (totalItems + itemsPerPage - 1) / itemsPerPage
-
-	if page > totalPages && totalPages > 0 {
-		page = totalPages
-	}
-
-	start := (page - 1) * itemsPerPage
-	end := start + itemsPerPage
-	if end > totalItems {
-		end = totalItems
-	}
-
-	var displaySolved []SolvedUser
-	if start < totalItems {
-		displaySolved = allSolved[start:end]
-	}
-
-	data := SolvedListData{
-		Problem:           p,
-		SolvedList:        displaySolved,
-		UserName:          userName,
-		CurrentUserSolved: currentUserSolved,
-		TotalCount:        totalItems,
-		CurrentPage:       page,
-		TotalPages:        totalPages,
-		HasPrev:           page > 1,
-		HasNext:           page < totalPages,
-		PrevPage:          page - 1,
-		NextPage:          page + 1,
-	}
-
-	tmpl := template.Must(template.ParseFiles("templates/solved.html"))
+	tmpl := template.Must(template.ParseFiles("templates/edit_problem.html"))
 	tmpl.Execute(w, data)
+}
+
+func HandleDeleteProblem(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	idStr := r.URL.Query().Get("id")
+	id, _ := strconv.Atoi(idStr)
+
+	p, err := getProblem(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Check ownership
+	if p.AuthorID != user.ID && user.Role != "admin" {
+		http.Error(w, "Access Denied", http.StatusForbidden)
+		return
+	}
+
+	// Prevent deleting if approved (unless admin)
+	if p.Status == "approved" && user.Role != "admin" {
+		http.Error(w, "Cannot delete approved problem", http.StatusForbidden)
+		return
+	}
+
+	// Delete related data first (foreign keys)
+	database.DB.Exec("DELETE FROM test_cases WHERE problem_id = $1", id)
+	database.DB.Exec("DELETE FROM submissions WHERE problem_id = $1", id)
+	database.DB.Exec("DELETE FROM problems WHERE id = $1", id)
+
+	http.Redirect(w, r, "/profile", http.StatusSeeOther)
+}
+
+func HandleDeleteTestCase(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	tcID, _ := strconv.Atoi(r.URL.Query().Get("id"))
+	pID, _ := strconv.Atoi(r.URL.Query().Get("problem_id"))
+
+	// Verify ownership
+	var authorID int
+	var status string
+	err := database.DB.QueryRow("SELECT author_id, status FROM problems WHERE id = $1", pID).Scan(&authorID, &status)
+
+	if err != nil || (authorID != user.ID && user.Role != "admin") {
+		http.Error(w, "Access Denied", http.StatusForbidden)
+		return
+	}
+
+	// Prevent deleting tests if approved
+	if status == "approved" && user.Role != "admin" {
+		http.Error(w, "Cannot delete tests from approved problem", http.StatusForbidden)
+		return
+	}
+
+	database.DB.Exec("DELETE FROM test_cases WHERE id = $1", tcID)
+	http.Redirect(w, r, fmt.Sprintf("/edit-problem?id=%d", pID), http.StatusSeeOther)
 }
 
 func HandleSolve(w http.ResponseWriter, r *http.Request) {
@@ -500,28 +463,27 @@ func HandleSolve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var p models.Problem
-	found := false
-	for _, problem := range Problems {
-		if problem.ID == id {
-			p = problem
-			found = true
-			break
-		}
-	}
-
-	if !found {
+	p, err := getProblem(id)
+	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
 
-	userName := GetUserName(r)
-	
+	user := GetUser(r)
+
+	// Check visibility
+	if p.Visibility == "private" {
+		if user == nil || user.ID != p.AuthorID {
+			http.Error(w, "Access Denied", http.StatusForbidden)
+			return
+		}
+	}
+
 	hasPending := false
-	if userName != "" {
+	if user != nil {
 		var count int
-		err := database.DB.QueryRow("SELECT COUNT(*) FROM submissions WHERE problem_id = $1 AND user_name = $2 AND status = 'В очереди...'", id, userName).Scan(&count)
-		if err == nil && count > 0 {
+		database.DB.QueryRow("SELECT COUNT(*) FROM submissions WHERE problem_id = $1 AND user_id = $2 AND status = 'В очереди...'", id, user.ID).Scan(&count)
+		if count > 0 {
 			hasPending = true
 		}
 	}
@@ -532,113 +494,22 @@ func HandleSolve(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		Problem     models.Problem
 		Languages   []models.Language
-		UserName    string
+		User        *models.User
 		HasPending  bool
 		ErrorMsg    string
 		SecondsLeft int
+		IsOwner     bool
 	}{
-		Problem:     p,
+		Problem:     *p,
 		Languages:   Languages,
-		UserName:    userName,
+		User:        user,
 		HasPending:  hasPending,
 		ErrorMsg:    r.URL.Query().Get("error"),
 		SecondsLeft: secondsLeft,
+		IsOwner:     user != nil && user.ID == p.AuthorID,
 	}
 
 	tmpl := template.Must(template.ParseFiles("templates/solve.html"))
-	tmpl.Execute(w, data)
-}
-
-func HandleViewSubmission(w http.ResponseWriter, r *http.Request) {
-	userName := GetUserName(r)
-	if userName == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	idStr := r.URL.Query().Get("id")
-	submissionID, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "Invalid submission ID", http.StatusBadRequest)
-		return
-	}
-
-	var targetSubmission models.SubmissionRecord
-	err = database.DB.QueryRow("SELECT id, user_name, problem_id, source_code, status FROM submissions WHERE id = $1", submissionID).
-		Scan(&targetSubmission.ID, &targetSubmission.UserName, &targetSubmission.ProblemID, &targetSubmission.SourceCode, &targetSubmission.Status)
-
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	
-	hasSolved := false
-	var count int
-	err = database.DB.QueryRow("SELECT COUNT(*) FROM submissions WHERE problem_id = $1 AND user_name = $2 AND status = 'Принято'", targetSubmission.ProblemID, userName).Scan(&count)
-	if err == nil && count > 0 {
-		hasSolved = true
-	}
-
-	if targetSubmission.UserName == userName || (hasSolved && targetSubmission.Status == "Принято") {
-		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte(targetSubmission.SourceCode))
-	} else {
-		http.Error(w, "Forbidden: You must solve this problem first to view other solutions.", http.StatusForbidden)
-	}
-}
-
-func HandleHistory(w http.ResponseWriter, r *http.Request) {
-	userName := GetUserName(r)
-	if userName == "" {
-		http.Redirect(w, r, "/auth/google/login", http.StatusTemporaryRedirect)
-		return
-	}
-
-	idStr := r.URL.Query().Get("id")
-	problemID, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "Invalid problem ID", http.StatusBadRequest)
-		return
-	}
-
-	var p models.Problem
-	found := false
-	for _, problem := range Problems {
-		if problem.ID == problemID {
-			p = problem
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		http.NotFound(w, r)
-		return
-	}
-
-	// Fetch history from DB
-	rows, err := database.DB.Query("SELECT id, status, language, execution_time, source_code, timestamp FROM submissions WHERE problem_id = $1 AND user_name = $2 ORDER BY id DESC", problemID, userName)
-	var userHistory []models.SubmissionRecord
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var rec models.SubmissionRecord
-			rows.Scan(&rec.ID, &rec.Status, &rec.Language, &rec.ExecutionTime, &rec.SourceCode, &rec.Timestamp)
-			userHistory = append(userHistory, rec)
-		}
-	}
-
-	data := struct {
-		Problem  models.Problem
-		History  []models.SubmissionRecord
-		UserName string
-	}{
-		Problem:  p,
-		History:  userHistory,
-		UserName: userName,
-	}
-
-	tmpl := template.Must(template.ParseFiles("templates/history.html"))
 	tmpl.Execute(w, data)
 }
 
@@ -648,14 +519,13 @@ func HandleSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userName := GetUserName(r)
-	if userName == "" {
+	user := GetUser(r)
+	if user == nil {
 		http.Redirect(w, r, "/auth/google/login", http.StatusTemporaryRedirect)
 		return
 	}
 
 	problemIDStr := r.FormValue("problem_id")
-	
 	sourceCode := strings.TrimSpace(r.FormValue("source_code"))
 	if sourceCode == "" {
 		http.Redirect(w, r, fmt.Sprintf("/solve?id=%s&error=empty", problemIDStr), http.StatusSeeOther)
@@ -663,27 +533,23 @@ func HandleSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	RateLimitMutex.Lock()
-	lastTime, exists := LastSubmission[userName]
+	lastTime, exists := LastSubmission[user.Email]
 	if exists && time.Since(lastTime) < 30*time.Second {
 		RateLimitMutex.Unlock()
 		remaining := 30*time.Second - time.Since(lastTime)
-		secondsLeft := int(remaining.Seconds())
-		http.Redirect(w, r, fmt.Sprintf("/solve?id=%s&error=wait&seconds=%d", problemIDStr, secondsLeft), http.StatusSeeOther)
+		http.Redirect(w, r, fmt.Sprintf("/solve?id=%s&error=wait&seconds=%d", problemIDStr, int(remaining.Seconds())), http.StatusSeeOther)
 		return
 	}
-	LastSubmission[userName] = time.Now()
+	LastSubmission[user.Email] = time.Now()
 	RateLimitMutex.Unlock()
 
 	problemID, _ := strconv.Atoi(problemIDStr)
-	languageIDStr := r.FormValue("language_id")
-	languageID, _ := strconv.Atoi(languageIDStr)
+	languageID, _ := strconv.Atoi(r.FormValue("language_id"))
 
-	var p models.Problem
-	for _, problem := range Problems {
-		if problem.ID == problemID {
-			p = problem
-			break
-		}
+	p, err := getProblem(problemID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
 	}
 
 	langName := "Unknown"
@@ -694,11 +560,10 @@ func HandleSubmit(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Insert into DB
 	var recordID int64
-	err := database.DB.QueryRow("INSERT INTO submissions (user_name, problem_id, problem_title, language, source_code, status, execution_time) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
-		userName, p.ID, p.Title, langName, sourceCode, "В очереди...", "-").Scan(&recordID)
-	
+	err = database.DB.QueryRow("INSERT INTO submissions (user_id, user_name, problem_id, problem_title, language, source_code, status, execution_time) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+		user.ID, user.Name, p.ID, p.Title, langName, sourceCode, "В очереди...", "-").Scan(&recordID)
+
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
@@ -714,9 +579,145 @@ func HandleSubmit(w http.ResponseWriter, r *http.Request) {
 	job := Job{
 		RecordID:   recordID,
 		Submission: submission,
-		Problem:    p,
+		Problem:    *p,
 	}
 	SubmissionQueue <- job
 
 	http.Redirect(w, r, fmt.Sprintf("/history?id=%d", p.ID), http.StatusSeeOther)
+}
+
+func HandleHistory(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r)
+	if user == nil {
+		http.Redirect(w, r, "/auth/google/login", http.StatusTemporaryRedirect)
+		return
+	}
+
+	idStr := r.URL.Query().Get("id")
+	problemID, _ := strconv.Atoi(idStr)
+
+	p, err := getProblem(problemID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	rows, err := database.DB.Query("SELECT id, status, language, execution_time, source_code, timestamp FROM submissions WHERE problem_id = $1 AND user_id = $2 ORDER BY id DESC", problemID, user.ID)
+	var userHistory []models.SubmissionRecord
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var rec models.SubmissionRecord
+			rows.Scan(&rec.ID, &rec.Status, &rec.Language, &rec.ExecutionTime, &rec.SourceCode, &rec.Timestamp)
+			userHistory = append(userHistory, rec)
+		}
+	}
+
+	data := struct {
+		Problem models.Problem
+		History []models.SubmissionRecord
+		User    *models.User
+	}{
+		Problem: *p,
+		History: userHistory,
+		User:    user,
+	}
+
+	tmpl := template.Must(template.ParseFiles("templates/history.html"))
+	tmpl.Execute(w, data)
+}
+
+func HandleSolvedList(w http.ResponseWriter, r *http.Request) {
+	idStr := r.URL.Query().Get("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid problem ID", http.StatusBadRequest)
+		return
+	}
+
+	var p models.Problem
+	// Simple fetch for title
+	database.DB.QueryRow("SELECT title FROM problems WHERE id = $1", id).Scan(&p.Title)
+	p.ID = id
+
+	user := GetUser(r)
+	currentUserSolved := false
+
+	if user != nil {
+		var count int
+		database.DB.QueryRow("SELECT COUNT(*) FROM submissions WHERE problem_id = $1 AND user_id = $2 AND status = 'Принято'", id, user.ID).Scan(&count)
+		if count > 0 {
+			currentUserSolved = true
+		}
+	}
+
+	query := `
+		SELECT s.id, u.name, s.execution_time, s.language
+		FROM submissions s
+		JOIN users u ON s.user_id = u.id
+		INNER JOIN (
+			SELECT user_id, MAX(id) as max_id
+			FROM submissions
+			WHERE problem_id = $1 AND status = 'Принято'
+			GROUP BY user_id
+		) grouped_s ON s.id = grouped_s.max_id
+		ORDER BY s.id DESC
+	`
+
+	rows, err := database.DB.Query(query, id)
+	var allSolved []SolvedUser
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var u SolvedUser
+			rows.Scan(&u.SubmissionID, &u.UserName, &u.ExecutionTime, &u.Language)
+			allSolved = append(allSolved, u)
+		}
+	}
+
+	// Pagination logic (simplified)
+	data := SolvedListData{
+		Problem:           p,
+		SolvedList:        allSolved,
+		UserName:          GetUserName(r),
+		CurrentUserSolved: currentUserSolved,
+		TotalCount:        len(allSolved),
+	}
+
+	tmpl := template.Must(template.ParseFiles("templates/solved.html"))
+	tmpl.Execute(w, data)
+}
+
+func HandleViewSubmission(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	idStr := r.URL.Query().Get("id")
+	submissionID, _ := strconv.Atoi(idStr)
+
+	var targetSubmission models.SubmissionRecord
+	err := database.DB.QueryRow("SELECT id, user_id, problem_id, source_code, status FROM submissions WHERE id = $1", submissionID).
+		Scan(&targetSubmission.ID, &targetSubmission.UserID, &targetSubmission.ProblemID, &targetSubmission.SourceCode, &targetSubmission.Status)
+
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	hasSolved := false
+	var count int
+	database.DB.QueryRow("SELECT COUNT(*) FROM submissions WHERE problem_id = $1 AND user_id = $2 AND status = 'Принято'", targetSubmission.ProblemID, user.ID).Scan(&count)
+	if count > 0 {
+		hasSolved = true
+	}
+
+	if targetSubmission.UserID == user.ID || (hasSolved && targetSubmission.Status == "Принято") {
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(targetSubmission.SourceCode))
+	} else {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+	}
 }

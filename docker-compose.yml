@@ -4,16 +4,17 @@ services:
   app:
     build: .
     ports:
-      - "8000:8000"
+      - "${APP_PORT}:8000" # Host Port from .env -> Container Port 8000
     environment:
+      - APP_PORT=${APP_PORT}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_NAME=onlinejudge
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock # Give access to Docker Daemon
     depends_on:
@@ -25,9 +26,9 @@ services:
     ports:
       - "5433:5432"
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=onlinejudge
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: always

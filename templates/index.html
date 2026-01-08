@@ -21,10 +21,9 @@
                     </div>
                 </div>
                 <div class="hidden md:flex items-center space-x-3 ">
-                    {{if .UserName}}
-                        <span class="py-2 px-2 font-medium text-gray-500">{{.UserName}}</span>
-                        <!-- Logout logic would require clearing the cookie, for now just a link -->
-                        <a href="/auth/google/login" class="py-2 px-2 font-medium text-gray-500 rounded hover:bg-red-500 hover:text-white transition duration-300">Сменить аккаунт</a>
+                    {{if .User}}
+                        <a href="/profile" class="py-2 px-2 font-medium text-green-500 border-b-4 border-green-500 hover:text-green-700 transition duration-300">{{.User.Name}}</a>
+                        <a href="/auth/google/login" class="py-2 px-2 font-medium text-gray-500 rounded hover:bg-red-500 hover:text-white transition duration-300">Выйти</a>
                     {{else}}
                         <a href="/auth/google/login" class="py-2 px-2 font-medium text-gray-500 rounded hover:bg-green-500 hover:text-white transition duration-300">Войти через Google</a>
                     {{end}}

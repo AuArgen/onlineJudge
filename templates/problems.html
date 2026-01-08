@@ -21,8 +21,8 @@
                     </div>
                 </div>
                 <div class="hidden md:flex items-center space-x-3 ">
-                    {{if .UserName}}
-                        <span class="py-2 px-2 font-medium text-gray-500">{{.UserName}}</span>
+                    {{if .User}}
+                        <span class="py-2 px-2 font-medium text-gray-500">{{.User.Name}}</span>
                     {{else}}
                         <a href="/auth/google/login" class="py-2 px-2 font-medium text-gray-500 rounded hover:bg-green-500 hover:text-white transition duration-300">Войти</a>
                     {{end}}
@@ -32,7 +32,15 @@
     </nav>
 
     <div class="container mx-auto px-4">
-        <h1 class="text-3xl font-bold mb-6">Список задач</h1>
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold">Список задач</h1>
+            {{if .User}}
+            <a href="/create-problem" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                + Создать задачу
+            </a>
+            {{end}}
+        </div>
+
         <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
             <table class="min-w-full leading-normal">
                 <thead>
@@ -58,7 +66,12 @@
                             <p class="text-gray-900 whitespace-no-wrap">{{.ID}}</p>
                         </td>
                         <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                            <a href="/solve?id={{.ID}}" class="text-gray-900 whitespace-no-wrap font-medium hover:text-blue-600">{{.Title}}</a>
+                            <a href="/solve?id={{.ID}}" class="text-gray-900 whitespace-no-wrap font-medium hover:text-blue-600">
+                                {{.Title}}
+                                {{if .IsOwner}}
+                                    <span class="text-xs text-gray-500 ml-2">(Ваша)</span>
+                                {{end}}
+                            </a>
                         </td>
                         <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
                             <a href="/solve?id={{.ID}}" class="text-blue-600 hover:text-blue-900 font-semibold">Решить</a>
