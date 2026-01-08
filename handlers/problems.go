@@ -465,6 +465,7 @@ func HandleSolve(w http.ResponseWriter, r *http.Request) {
 
 	p, err := getProblem(id)
 	if err != nil {
+		fmt.Println("Error getting problem:", err) // LOG ERROR
 		http.NotFound(w, r)
 		return
 	}
@@ -473,7 +474,13 @@ func HandleSolve(w http.ResponseWriter, r *http.Request) {
 
 	// Check visibility
 	if p.Visibility == "private" {
-		if user == nil || user.ID != p.AuthorID {
+		if user == nil {
+			fmt.Println("Access Denied: User is nil for private problem") // LOG
+			http.Error(w, "Access Denied", http.StatusForbidden)
+			return
+		}
+		if user.ID != p.AuthorID {
+			fmt.Printf("Access Denied: User ID %d != Author ID %d\n", user.ID, p.AuthorID) // LOG
 			http.Error(w, "Access Denied", http.StatusForbidden)
 			return
 		}
@@ -509,8 +516,14 @@ func HandleSolve(w http.ResponseWriter, r *http.Request) {
 		IsOwner:     user != nil && user.ID == p.AuthorID,
 	}
 
+	// LOG DATA
+	fmt.Printf("Rendering solve page for problem %d: %s\n", p.ID, p.Title)
+
 	tmpl := template.Must(template.ParseFiles("templates/solve.html"))
-	tmpl.Execute(w, data)
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		fmt.Println("Template execution error:", err) // LOG TEMPLATE ERROR
+	}
 }
 
 func HandleSubmit(w http.ResponseWriter, r *http.Request) {

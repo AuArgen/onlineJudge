@@ -5,8 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Online Judge</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        function toggleMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+    </script>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 flex flex-col min-h-screen">
     <nav class="bg-white shadow-lg">
         <div class="max-w-6xl mx-auto px-4">
             <div class="flex justify-between">
@@ -20,24 +26,59 @@
                         <a href="/problems" class="py-4 px-2 text-gray-500 font-semibold hover:text-green-500 transition duration-300">Задачи</a>
                     </div>
                 </div>
-                <div class="hidden md:flex items-center space-x-3 ">
+                <!-- Desktop Menu -->
+                <div class="hidden md:flex items-center space-x-3">
                     {{if .User}}
-                        <a href="/profile" class="py-2 px-2 font-medium text-green-500 border-b-4 border-green-500 hover:text-green-700 transition duration-300">{{.User.Name}}</a>
-                        <a href="/auth/google/login" class="py-2 px-2 font-medium text-gray-500 rounded hover:bg-red-500 hover:text-white transition duration-300">Выйти</a>
+                        <a href="/profile" class="py-2 px-4 font-medium text-white bg-green-500 rounded hover:bg-green-600 transition duration-300">Личный кабинет</a>
+                        <a href="/auth/google/login" class="py-2 px-2 font-medium text-gray-500 hover:text-red-500 transition duration-300">Выйти</a>
                     {{else}}
-                        <a href="/auth/google/login" class="py-2 px-2 font-medium text-gray-500 rounded hover:bg-green-500 hover:text-white transition duration-300">Войти через Google</a>
+                        <a href="/auth/google/login" class="py-2 px-4 font-medium text-white bg-blue-500 rounded hover:bg-blue-600 transition duration-300">Войти</a>
                     {{end}}
+                </div>
+                <!-- Mobile Menu Button -->
+                <div class="md:hidden flex items-center">
+                    <button class="outline-none mobile-menu-button" onclick="toggleMenu()">
+                        <svg class="w-6 h-6 text-gray-500 hover:text-green-500"
+                            x-show="!showMenu"
+                            fill="none"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
         </div>
+        <!-- Mobile Menu -->
+        <div class="hidden md:hidden" id="mobile-menu">
+            <ul class="">
+                <li><a href="/problems" class="block text-sm px-2 py-4 hover:bg-green-500 hover:text-white transition duration-300">Задачи</a></li>
+                {{if .User}}
+                    <li><a href="/profile" class="block text-sm px-2 py-4 hover:bg-green-500 hover:text-white transition duration-300">Личный кабинет</a></li>
+                    <li><a href="/auth/google/login" class="block text-sm px-2 py-4 hover:bg-red-500 hover:text-white transition duration-300">Выйти</a></li>
+                {{else}}
+                    <li><a href="/auth/google/login" class="block text-sm px-2 py-4 hover:bg-blue-500 hover:text-white transition duration-300">Войти</a></li>
+                {{end}}
+            </ul>
+        </div>
     </nav>
 
-    <div class="container mx-auto px-4 py-16 text-center">
-        <h1 class="text-4xl font-bold mb-4">Добро пожаловать в Online Judge</h1>
-        <p class="text-xl mb-8">Практикуйтесь в программировании и улучшайте свои навыки.</p>
-        <a href="/problems" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+    <div class="container mx-auto px-4 py-16 text-center flex-grow">
+        <h1 class="text-4xl font-bold mb-4 text-gray-800">Добро пожаловать в Online Judge</h1>
+        <p class="text-xl mb-8 text-gray-600">Практикуйтесь в программировании и улучшайте свои навыки.</p>
+        <a href="/problems" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
             Начать решать
         </a>
     </div>
+
+    <footer class="bg-white border-t mt-auto">
+        <div class="container mx-auto px-4 py-6 text-center text-gray-500 text-sm">
+            &copy; 2026 Online Judge. Все права защищены.
+        </div>
+    </footer>
 </body>
 </html>
