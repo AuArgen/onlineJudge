@@ -1,5 +1,5 @@
-# Use a base image with Go installed
-FROM golang:1.21-bullseye
+# Use Go 1.22 to be safe with newer dependencies
+FROM golang:1.22-bullseye
 
 # Install necessary compilers and tools
 RUN apt-get update && apt-get install -y \
@@ -21,7 +21,7 @@ RUN go mod download
 # Copy the source code
 COPY . .
 
-# Run go mod tidy AFTER copying source code to detect all imports
+# Run go mod tidy AFTER copying source code to detect all imports and apply replacements
 RUN go mod tidy
 
 # Build the application

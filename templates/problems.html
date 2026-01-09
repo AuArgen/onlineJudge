@@ -60,13 +60,48 @@
     </nav>
 
     <div class="container mx-auto px-4 flex-grow">
-        <div class="flex justify-between items-center mb-6">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
             <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Список задач</h1>
             {{if .User}}
             <a href="/create-problem" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded text-sm md:text-base shadow">
                 + Создать
             </a>
             {{end}}
+        </div>
+
+        <!-- Filters & Search -->
+        <div class="bg-white shadow-md rounded-lg p-4 mb-6">
+            <form action="/problems" method="GET" class="flex flex-col md:flex-row gap-4">
+                <!-- Search -->
+                <div class="flex-grow">
+                    <input type="text" name="search" placeholder="Поиск по названию или автору..." value="{{.Search}}" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Filter -->
+                <div class="w-full md:w-auto">
+                    <select name="filter" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="this.form.submit()">
+                        <option value="all" {{if eq .Filter ""}}selected{{end}}>Все задачи</option>
+                        {{if .User}}
+                        <option value="access" {{if eq .Filter "access"}}selected{{end}}>Доступные мне (Email)</option>
+                        <option value="solved" {{if eq .Filter "solved"}}selected{{end}}>Решенные мной</option>
+                        <option value="own" {{if eq .Filter "own"}}selected{{end}}>Мои задачи</option>
+                        {{end}}
+                    </select>
+                </div>
+
+                <!-- Sort -->
+                <div class="w-full md:w-auto">
+                    <select name="sort" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="this.form.submit()">
+                        <option value="newest" {{if eq .Sort ""}}selected{{end}}>Сначала новые</option>
+                        <option value="oldest" {{if eq .Sort "oldest"}}selected{{end}}>Сначала старые</option>
+                        <option value="title" {{if eq .Sort "title"}}selected{{end}}>По названию (А-Я)</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    Найти
+                </button>
+            </form>
         </div>
 
         <div class="bg-white shadow-md rounded-lg overflow-hidden mb-4">
@@ -82,22 +117,25 @@
                     </thead>
                     <tbody>
                         {{range .Problems}}
-                        <tr class="hover:bg-gray-50 transition duration-150">
-                            <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm">
+                        <tr class="hover:bg-gray-50 transition duration-150 {{if .IsSolved}}bg-green-50{{end}}">
+                            <td class="px-5 py-4 border-b border-gray-200 text-sm">
                                 <p class="text-gray-900 whitespace-no-wrap font-mono">{{.ID}}</p>
                             </td>
-                            <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm">
+                            <td class="px-5 py-4 border-b border-gray-200 text-sm">
                                 <a href="/solve?id={{.ID}}" class="text-gray-900 font-medium hover:text-blue-600 block">
                                     {{.Title}}
                                     {{if .IsOwner}}
                                         <span class="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded ml-2">Ваша</span>
                                     {{end}}
+                                    {{if .IsSolved}}
+                                        <span class="inline-block bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded ml-2">Решено</span>
+                                    {{end}}
                                 </a>
                             </td>
-                            <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm">
+                            <td class="px-5 py-4 border-b border-gray-200 text-sm">
                                 <a href="/solve?id={{.ID}}" class="inline-block bg-blue-100 text-blue-700 hover:bg-blue-200 font-semibold py-1 px-3 rounded text-xs transition duration-300">Решить</a>
                             </td>
-                            <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm text-right">
+                            <td class="px-5 py-4 border-b border-gray-200 text-sm text-right">
                                 <a href="/solved?id={{.ID}}" class="inline-block bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full px-3 py-1 text-xs font-semibold transition duration-300">
                                     👤 {{.SolvedCount}}
                                 </a>
@@ -115,7 +153,7 @@
                 </span>
                 <div class="inline-flex mt-2 xs:mt-0">
                     {{if .HasPrev}}
-                        <a href="/problems?page={{.PrevPage}}" class="text-sm bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-l">
+                        <a href="/problems?page={{.PrevPage}}&filter={{.Filter}}&sort={{.Sort}}&search={{.Search}}" class="text-sm bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-l">
                             Назад
                         </a>
                     {{else}}
@@ -124,7 +162,7 @@
                         </button>
                     {{end}}
                     {{if .HasNext}}
-                        <a href="/problems?page={{.NextPage}}" class="text-sm bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-r">
+                        <a href="/problems?page={{.NextPage}}&filter={{.Filter}}&sort={{.Sort}}&search={{.Search}}" class="text-sm bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-r">
                             Вперед
                         </a>
                     {{else}}

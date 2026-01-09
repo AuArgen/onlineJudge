@@ -14,65 +14,6 @@ import (
 	"time"
 )
 
-// --- Structs for Template Data ---
-
-// Helper struct for solved list
-type SolvedUser struct {
-	UserName      string
-	SubmissionID  int
-	ExecutionTime string
-	Language      string
-}
-
-// SolvedListData holds data for the solved.html page
-type SolvedListData struct {
-	Problem           models.Problem
-	SolvedList        []SolvedUser
-	UserName          string
-	CurrentUserSolved bool
-	TotalCount        int
-	CurrentPage       int
-	TotalPages        int
-	HasPrev           bool
-	HasNext           bool
-	PrevPage          int
-	NextPage          int
-}
-
-// ProblemData holds the problem info plus the solved count
-type ProblemData struct {
-	models.Problem
-	SolvedCount int
-	IsOwner     bool
-}
-
-// PageData holds all info needed for the problems page
-type PageData struct {
-	Problems    []ProblemData
-	User        *models.User
-	CurrentPage int
-	TotalPages  int
-	HasPrev     bool
-	HasNext     bool
-	PrevPage    int
-	NextPage    int
-}
-
-// --- Data & Storage ---
-
-var Languages = []models.Language{
-	{ID: 71, Name: "Python (3.8+)"},
-	{ID: 54, Name: "C++ (GCC)"},
-	{ID: 62, Name: "Java (OpenJDK)"},
-	{ID: 63, Name: "JavaScript (Node.js)"},
-	{ID: 60, Name: "Go"},
-}
-
-var (
-	LastSubmission = make(map[string]time.Time)
-	RateLimitMutex sync.Mutex
-)
-
 // --- Queue System ---
 
 type Job struct {
@@ -158,6 +99,19 @@ func processJob(job Job) {
 
 // --- Handlers ---
 
+var Languages = []models.Language{
+	{ID: 71, Name: "Python (3.8+)"},
+	{ID: 54, Name: "C++ (GCC)"},
+	{ID: 62, Name: "Java (OpenJDK)"},
+	{ID: 63, Name: "JavaScript (Node.js)"},
+	{ID: 60, Name: "Go"},
+}
+
+var (
+	LastSubmission = make(map[string]time.Time)
+	RateLimitMutex sync.Mutex
+)
+
 // Helper to get problem from DB
 func getProblem(id int) (*models.Problem, error) {
 	var p models.Problem
@@ -197,14 +151,14 @@ func HandleProblems(w http.ResponseWriter, r *http.Request) {
 	var totalItems int
 
 	// Count total
-	countQuery := "SELECT COUNT(*) FROM problems WHERE status = 'approved'"
+	countQuery := "SELECT COUNT(*) FROM problems WHERE visibility = 'public'"
 	if user != nil {
 		countQuery += fmt.Sprintf(" OR author_id = %d", user.ID)
 	}
 	database.DB.QueryRow(countQuery).Scan(&totalItems)
 
 	// Fetch items
-	query := "SELECT id, title, author_id, status FROM problems WHERE status = 'approved'"
+	query := "SELECT id, title, author_id, status FROM problems WHERE visibility = 'public'"
 	if user != nil {
 		query += fmt.Sprintf(" OR author_id = %d", user.ID)
 	}
@@ -217,6 +171,11 @@ func HandleProblems(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
+	type ProblemData struct {
+		models.Problem
+		SolvedCount int
+		IsOwner     bool
+	}
 	var displayProblems []ProblemData
 
 	for rows.Next() {
@@ -233,7 +192,16 @@ func HandleProblems(w http.ResponseWriter, r *http.Request) {
 
 	totalPages := (totalItems + itemsPerPage - 1) / itemsPerPage
 
-	data := PageData{
+	data := struct {
+		Problems    []ProblemData
+		User        *models.User
+		CurrentPage int
+		TotalPages  int
+		HasPrev     bool
+		HasNext     bool
+		PrevPage    int
+		NextPage    int
+	}{
 		Problems:    displayProblems,
 		User:        user,
 		CurrentPage: page,
@@ -465,7 +433,6 @@ func HandleSolve(w http.ResponseWriter, r *http.Request) {
 
 	p, err := getProblem(id)
 	if err != nil {
-		fmt.Println("Error getting problem:", err) // LOG ERROR
 		http.NotFound(w, r)
 		return
 	}
@@ -474,13 +441,7 @@ func HandleSolve(w http.ResponseWriter, r *http.Request) {
 
 	// Check visibility
 	if p.Visibility == "private" {
-		if user == nil {
-			fmt.Println("Access Denied: User is nil for private problem") // LOG
-			http.Error(w, "Access Denied", http.StatusForbidden)
-			return
-		}
-		if user.ID != p.AuthorID {
-			fmt.Printf("Access Denied: User ID %d != Author ID %d\n", user.ID, p.AuthorID) // LOG
+		if user == nil || user.ID != p.AuthorID {
 			http.Error(w, "Access Denied", http.StatusForbidden)
 			return
 		}
@@ -516,14 +477,8 @@ func HandleSolve(w http.ResponseWriter, r *http.Request) {
 		IsOwner:     user != nil && user.ID == p.AuthorID,
 	}
 
-	// LOG DATA
-	fmt.Printf("Rendering solve page for problem %d: %s\n", p.ID, p.Title)
-
 	tmpl := template.Must(template.ParseFiles("templates/solve.html"))
-	err = tmpl.Execute(w, data)
-	if err != nil {
-		fmt.Println("Template execution error:", err) // LOG TEMPLATE ERROR
-	}
+	tmpl.Execute(w, data)
 }
 
 func HandleSubmit(w http.ResponseWriter, r *http.Request) {
@@ -590,7 +545,7 @@ func HandleSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	job := Job{
-		RecordID:   recordID,
+		RecordID:   record.ID,
 		Submission: submission,
 		Problem:    *p,
 	}

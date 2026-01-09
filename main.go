@@ -1,12 +1,12 @@
 package main
 
 import (
-	"html/template"
 	"log"
 	"net/http"
 	"onlineJudge/config"
+	"onlineJudge/controllers"
 	"onlineJudge/database"
-	"onlineJudge/handlers"
+	"onlineJudge/routes"
 	"onlineJudge/selftest"
 	"os"
 
@@ -14,42 +14,24 @@ import (
 )
 
 func main() {
+	// 1. Load Environment Variables
 	err := godotenv.Load()
 	if err != nil {
 		log.Println("Warning: Error loading .env file, using environment variables")
 	}
 
+	// 2. Initialize Configuration & Database
 	config.InitConfig()
 	database.InitDB()
 
+	// 3. Run Self-Test & Start Workers
 	go selftest.Run()
-	handlers.StartWorker()
+	controllers.StartWorker()
 
-	http.HandleFunc("/", handleMain)
-	http.HandleFunc("/auth/google/login", handlers.HandleGoogleLogin)
-	http.HandleFunc("/auth/google/callback", handlers.HandleGoogleCallback)
-	http.HandleFunc("/problems", handlers.HandleProblems)
-	http.HandleFunc("/create-problem", handlers.HandleCreateProblem)
-	http.HandleFunc("/edit-problem", handlers.HandleEditProblem)
-	http.HandleFunc("/delete-problem", handlers.HandleDeleteProblem) // New route
-	http.HandleFunc("/delete-testcase", handlers.HandleDeleteTestCase)
-	http.HandleFunc("/solve", handlers.HandleSolve)
-	http.HandleFunc("/submit", handlers.HandleSubmit)
-	http.HandleFunc("/history", handlers.HandleHistory)
-	http.HandleFunc("/submission", handlers.HandleViewSubmission)
-	http.HandleFunc("/solved", handlers.HandleSolvedList)
+	// 4. Setup Routes
+	routes.SetupRoutes()
 
-	// Profile Route
-	http.HandleFunc("/profile", handlers.HandleProfile)
-
-	// Admin Routes
-	http.HandleFunc("/admin", handlers.HandleAdminPanel)
-	http.HandleFunc("/admin/approve", handlers.HandleApproveProblem)
-	http.HandleFunc("/admin/reject", handlers.HandleRejectProblem)
-
-	fs := http.FileServer(http.Dir("./static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
-
+	// 5. Start Server
 	port := os.Getenv("APP_PORT")
 	if port == "" {
 		port = "8000"
@@ -60,15 +42,4 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-func handleMain(w http.ResponseWriter, r *http.Request) {
-	user := handlers.GetUser(r)
-	data := struct {
-		User interface{}
-	}{
-		User: user,
-	}
-	tmpl := template.Must(template.ParseFiles("templates/index.html"))
-	tmpl.Execute(w, data)
 }

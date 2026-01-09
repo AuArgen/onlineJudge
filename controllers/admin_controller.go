@@ -1,4 +1,4 @@
-package handlers
+package controllers
 
 import (
 	"html/template"
@@ -17,23 +17,9 @@ func HandleAdminPanel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch problems with status 'pending_review'
-	rows, err := database.DB.Query("SELECT id, title, author_id, created_at FROM problems WHERE status = 'pending_review' ORDER BY created_at DESC")
-	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
 	var pendingProblems []models.Problem
-	for rows.Next() {
-		var p models.Problem
-		rows.Scan(&p.ID, &p.Title, &p.AuthorID, &p.CreatedAt)
-
-		// Fetch author name
-		database.DB.QueryRow("SELECT name FROM users WHERE id = $1", p.AuthorID).Scan(&p.AuthorName)
-
-		pendingProblems = append(pendingProblems, p)
-	}
+	// Preload Author to get name
+	database.DB.Preload("Author").Where("status = ?", "pending_review").Order("created_at desc").Find(&pendingProblems)
 
 	data := struct {
 		PendingProblems []models.Problem
@@ -58,11 +44,10 @@ func HandleApproveProblem(w http.ResponseWriter, r *http.Request) {
 	idStr := r.URL.Query().Get("id")
 	id, _ := strconv.Atoi(idStr)
 
-	_, err := database.DB.Exec("UPDATE problems SET status = 'approved', visibility = 'public' WHERE id = $1", id)
-	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
-		return
-	}
+	database.DB.Model(&models.Problem{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"status":     "approved",
+		"visibility": "public",
+	})
 
 	http.Redirect(w, r, "/admin", http.StatusSeeOther)
 }
@@ -78,11 +63,10 @@ func HandleRejectProblem(w http.ResponseWriter, r *http.Request) {
 	idStr := r.URL.Query().Get("id")
 	id, _ := strconv.Atoi(idStr)
 
-	_, err := database.DB.Exec("UPDATE problems SET status = 'draft', visibility = 'private' WHERE id = $1", id)
-	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
-		return
-	}
+	database.DB.Model(&models.Problem{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"status":     "draft",
+		"visibility": "private",
+	})
 
 	http.Redirect(w, r, "/admin", http.StatusSeeOther)
 }

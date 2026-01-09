@@ -47,7 +47,7 @@
                         <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
                             <a href="/solve?id={{.ID}}" class="text-blue-600 hover:text-blue-900 font-medium" target="_blank">{{.Title}}</a>
                         </td>
-                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">{{.AuthorName}}</td>
+                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">{{.Author.Name}}</td>
                         <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">{{.CreatedAt.Format "02.01.2006"}}</td>
                         <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
                             <a href="/admin/approve?id={{.ID}}" class="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-xs mr-2">Одобрить</a>

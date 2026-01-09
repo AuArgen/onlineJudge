@@ -1,16 +1,18 @@
 package database
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
+	"onlineJudge/models"
 	"os"
 	"time"
 
-	_ "github.com/lib/pq"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
-var DB *sql.DB
+var DB *gorm.DB
 
 func InitDB() {
 	var err error
@@ -21,26 +23,28 @@ func InitDB() {
 	password := os.Getenv("DB_PASSWORD")
 	dbname := os.Getenv("DB_NAME")
 
-	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
 
+	// Retry logic
 	maxRetries := 12
 	for i := 0; i < maxRetries; i++ {
 		log.Printf("Connecting to database (Attempt %d/%d)...\n", i+1, maxRetries)
-		DB, err = sql.Open("postgres", psqlInfo)
-		if err != nil {
-			log.Printf("Failed to open sql connection: %v\n", err)
-			time.Sleep(5 * time.Second)
-			continue
-		}
 
-		err = DB.Ping()
+		DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
+
 		if err == nil {
-			log.Println("Successfully connected to PostgreSQL database.")
-			break
+			sqlDB, _ := DB.DB()
+			err = sqlDB.Ping()
+			if err == nil {
+				log.Println("Successfully connected to PostgreSQL database via GORM.")
+				break
+			}
 		}
 
-		log.Printf("Failed to ping database: %v. Retrying in 5 seconds...\n", err)
+		log.Printf("Failed to connect to database: %v. Retrying in 5 seconds...\n", err)
 		time.Sleep(5 * time.Second)
 	}
 
@@ -48,72 +52,33 @@ func InitDB() {
 		log.Fatal("Could not connect to database after multiple attempts: ", err)
 	}
 
-	createTables()
+	// Auto Migrate
+	// GORM will automatically create tables, missing columns and missing indexes.
+	// It WILL NOT delete unused columns to protect data.
+	log.Println("Running Auto Migration...")
+	err = DB.AutoMigrate(
+		&models.User{},
+		&models.Problem{},
+		&models.TestCase{},
+		&models.ProblemAccess{},
+		&models.SubmissionRecord{},
+		&models.SubmissionDetail{},
+	)
+	if err != nil {
+		log.Fatal("Migration failed: ", err)
+	}
+	log.Println("Database migration completed.")
+
+	// Seed Data (Optional: Add default admin or problems if DB is empty)
+	seedData()
 }
 
-func createTables() {
-	// 1. Users Table
-	// Role: 'user' or 'admin'
-	usersTable := `
-	CREATE TABLE IF NOT EXISTS users (
-		id SERIAL PRIMARY KEY,
-		google_id TEXT UNIQUE,
-		email TEXT UNIQUE,
-		name TEXT,
-		role TEXT DEFAULT 'user',
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);`
-
-	// 2. Problems Table
-	// Visibility: 'private', 'link', 'public'
-	// Status: 'draft', 'pending_review', 'approved'
-	problemsTable := `
-	CREATE TABLE IF NOT EXISTS problems (
-		id SERIAL PRIMARY KEY,
-		author_id INTEGER REFERENCES users(id),
-		title TEXT,
-		description TEXT,
-		time_limit FLOAT,
-		memory_limit INTEGER,
-		visibility TEXT DEFAULT 'private',
-		status TEXT DEFAULT 'draft',
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);`
-
-	// 3. Test Cases Table
-	// IsSample: true if it should be shown to user
-	testCasesTable := `
-	CREATE TABLE IF NOT EXISTS test_cases (
-		id SERIAL PRIMARY KEY,
-		problem_id INTEGER REFERENCES problems(id),
-		input TEXT,
-		expected_output TEXT,
-		is_sample BOOLEAN DEFAULT FALSE
-	);`
-
-	// 4. Submissions Table (Updated)
-	submissionsTable := `
-	CREATE TABLE IF NOT EXISTS submissions (
-		id SERIAL PRIMARY KEY,
-		user_name TEXT, -- Keeping for backward compatibility, but should link to users(id)
-		user_id INTEGER REFERENCES users(id),
-		problem_id INTEGER REFERENCES problems(id),
-		problem_title TEXT,
-		language TEXT,
-		source_code TEXT,
-		status TEXT,
-		execution_time TEXT,
-		timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);`
-
-	queries := []string{usersTable, problemsTable, testCasesTable, submissionsTable}
-
-	for _, query := range queries {
-		_, err := DB.Exec(query)
-		if err != nil {
-			log.Fatal("Error creating table: ", err)
-		}
+func seedData() {
+	var count int64
+	DB.Model(&models.Problem{}).Count(&count)
+	if count == 0 {
+		log.Println("Seeding initial problems...")
+		// Add some default problems here if needed, or leave empty to start fresh
+		// For now, we rely on users creating problems via UI
 	}
-
-	log.Println("Database tables initialized.")
 }

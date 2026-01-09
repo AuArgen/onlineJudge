@@ -47,9 +47,9 @@ func ExecuteCode(sub models.Submission) (ExecutionResult, error) {
 		fileName = "main.js"
 		runCmd = []string{"node", fileName}
 	case 60: // Go
-		imageName = "golang:1.21-alpine"
+		// Changed to standard golang image (debian based) for better compatibility
+		imageName = "golang:1.21"
 		fileName = "main.go"
-		// Separate compile and run for Go to avoid timeout
 		compileCmd = []string{"go", "build", "-o", "main", "main.go"}
 		runCmd = []string{"./main"}
 	case 54: // C++ (GCC)
@@ -97,11 +97,11 @@ func ExecuteCode(sub models.Submission) (ExecutionResult, error) {
 
 	containerID := resp.ID
 	defer func() {
-		cli.ContainerRemove(ctx, containerID, types.ContainerRemoveOptions{Force: true})
+		cli.ContainerRemove(ctx, containerID, container.RemoveOptions{Force: true})
 	}()
 
 	// 2. Start Container
-	if err := cli.ContainerStart(ctx, containerID, types.ContainerStartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, containerID, container.StartOptions{}); err != nil {
 		return ExecutionResult{}, fmt.Errorf("failed to start container: %v", err)
 	}
 
@@ -132,7 +132,7 @@ func ExecuteCode(sub models.Submission) (ExecutionResult, error) {
 
 		var errBuf bytes.Buffer
 		stdcopy.StdCopy(&errBuf, &errBuf, resp.Reader)
-		
+
 		inspectResp, err := cli.ContainerExecInspect(ctx, execIDResp.ID)
 		if err == nil && inspectResp.ExitCode != 0 {
 			fmt.Printf("Compilation failed: %s\n", errBuf.String())
@@ -167,7 +167,7 @@ func ExecuteCode(sub models.Submission) (ExecutionResult, error) {
 	}()
 
 	startTime := time.Now()
-	
+
 	var stdout, stderr bytes.Buffer
 	outputDone := make(chan error)
 	go func() {
@@ -179,7 +179,7 @@ func ExecuteCode(sub models.Submission) (ExecutionResult, error) {
 	if timeLimit <= 0 {
 		timeLimit = 5.0
 	}
-	
+
 	select {
 	case <-outputDone:
 		// Process finished
@@ -205,7 +205,7 @@ func ExecuteCode(sub models.Submission) (ExecutionResult, error) {
 func ensureImage(ctx context.Context, cli *client.Client, imageName string) error {
 	_, _, err := cli.ImageInspectWithRaw(ctx, imageName)
 	if err == nil {
-		return nil 
+		return nil
 	}
 
 	fmt.Printf("Pulling image %s...\n", imageName)
@@ -214,7 +214,7 @@ func ensureImage(ctx context.Context, cli *client.Client, imageName string) erro
 		return err
 	}
 	defer reader.Close()
-	
+
 	io.Copy(io.Discard, reader)
 	fmt.Printf("Successfully pulled image %s\n", imageName)
 	return nil

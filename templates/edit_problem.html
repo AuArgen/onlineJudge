@@ -13,17 +13,9 @@
                     <a href="/" class="flex items-center py-4 px-2">
                         <span class="font-semibold text-gray-500 text-lg">Online Judge</span>
                     </a>
-                    <div class="hidden md:flex items-center space-x-1">
-                        <a href="/problems" class="py-4 px-2 text-gray-500 font-semibold hover:text-green-500 transition duration-300">Задачи</a>
-                    </div>
                 </div>
                 <div class="hidden md:flex items-center space-x-3 ">
-                    {{if .User}}
-                        <a href="/profile" class="py-2 px-2 font-medium text-green-500 border-b-4 border-green-500 hover:text-green-700 transition duration-300">{{.User.Name}}</a>
-                        <a href="/auth/google/login" class="py-2 px-2 font-medium text-gray-500 rounded hover:bg-red-500 hover:text-white transition duration-300">Выйти</a>
-                    {{else}}
-                        <a href="/auth/google/login" class="py-2 px-2 font-medium text-gray-500 rounded hover:bg-green-500 hover:text-white transition duration-300">Войти</a>
-                    {{end}}
+                    <span class="py-2 px-2 font-medium text-gray-500">{{.User.Name}}</span>
                 </div>
             </div>
         </div>
@@ -86,8 +78,19 @@
                             Статус
                         </label>
                         <select class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="status" name="status">
-                            <option value="draft" {{if eq .Problem.Status "draft"}}selected{{end}}>Черновик (Личное)</option>
+                            <option value="draft" {{if eq .Problem.Status "draft"}}selected{{end}}>Черновик</option>
                             <option value="pending_review" {{if eq .Problem.Status "pending_review"}}selected{{end}}>Отправить на модерацию</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="visibility">
+                            Доступность
+                        </label>
+                        <select class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="visibility" name="visibility">
+                            <option value="private" {{if eq .Problem.Visibility "private"}}selected{{end}}>Личное (Только я и список)</option>
+                            <option value="link" {{if eq .Problem.Visibility "link"}}selected{{end}}>По ссылке (У кого есть ссылка)</option>
+                            <option value="public" {{if eq .Problem.Visibility "public"}}selected{{end}} disabled>Публичное (Только через модерацию)</option>
                         </select>
                     </div>
                     {{end}}
@@ -127,47 +130,90 @@
                 </form>
             </div>
 
-            <!-- Test Cases List -->
-            <div class="md:w-1/2 bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4 h-fit">
-                <h2 class="text-2xl font-bold mb-4">Тестовые данные</h2>
-                {{if .Problem.TestCases}}
-                <div class="overflow-x-auto">
-                    <table class="min-w-full leading-normal">
-                        <thead>
-                            <tr>
-                                <th class="px-4 py-2 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID</th>
-                                <th class="px-4 py-2 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ввод (Preview)</th>
-                                <th class="px-4 py-2 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Тип</th>
-                                <th class="px-4 py-2 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Действие</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{range .Problem.TestCases}}
-                            <tr>
-                                <td class="px-4 py-2 border-b border-gray-200 bg-white text-sm">{{.ID}}</td>
-                                <td class="px-4 py-2 border-b border-gray-200 bg-white text-sm font-mono text-xs truncate max-w-xs">{{.Input}}</td>
-                                <td class="px-4 py-2 border-b border-gray-200 bg-white text-sm">
-                                    {{if .IsSample}}
-                                        <span class="bg-blue-200 text-blue-800 py-1 px-2 rounded-full text-xs">Sample</span>
-                                    {{else}}
-                                        <span class="bg-gray-200 text-gray-800 py-1 px-2 rounded-full text-xs">Hidden</span>
-                                    {{end}}
-                                </td>
-                                <td class="px-4 py-2 border-b border-gray-200 bg-white text-sm">
-                                    {{if ne $.Problem.Status "approved"}}
-                                    <a href="/delete-testcase?id={{.ID}}&problem_id={{$.Problem.ID}}" class="text-red-600 hover:text-red-900 text-xs" onclick="return confirm('Удалить этот тест?')">Удалить</a>
-                                    {{else}}
-                                    <span class="text-gray-400 text-xs">Заблокировано</span>
-                                    {{end}}
-                                </td>
-                            </tr>
-                            {{end}}
-                        </tbody>
-                    </table>
+            <!-- Right Column: Test Cases & Access List -->
+            <div class="md:w-1/2 h-fit">
+                <!-- Access List -->
+                <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+                    <h2 class="text-xl font-bold mb-4">Доступ (для приватных задач)</h2>
+                    <form action="/edit-problem?id={{.Problem.ID}}" method="POST" class="mb-4 flex gap-2">
+                        <input type="hidden" name="title" value="{{.Problem.Title}}">
+                        <input type="hidden" name="description" value="{{.Problem.Description}}">
+                        <input type="hidden" name="time_limit" value="{{.Problem.TimeLimit}}">
+                        <input type="hidden" name="memory_limit" value="{{.Problem.MemoryLimit}}">
+                        <input type="hidden" name="status" value="{{.Problem.Status}}">
+                        <input type="hidden" name="visibility" value="{{.Problem.Visibility}}">
+
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" name="access_email" type="email" placeholder="Email пользователя">
+                        <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
+                            Добавить
+                        </button>
+                    </form>
+
+                    {{if .AccessList}}
+                    <ul class="list-disc pl-5">
+                        {{range .AccessList}}
+                        <li class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-700">{{.}}</span>
+                            <form action="/edit-problem?id={{$.Problem.ID}}" method="POST" class="inline">
+                                <input type="hidden" name="title" value="{{$.Problem.Title}}">
+                                <input type="hidden" name="description" value="{{$.Problem.Description}}">
+                                <input type="hidden" name="time_limit" value="{{$.Problem.TimeLimit}}">
+                                <input type="hidden" name="memory_limit" value="{{$.Problem.MemoryLimit}}">
+                                <input type="hidden" name="status" value="{{$.Problem.Status}}">
+                                <input type="hidden" name="visibility" value="{{$.Problem.Visibility}}">
+                                <input type="hidden" name="remove_access" value="{{.}}">
+                                <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-bold">Удалить</button>
+                            </form>
+                        </li>
+                        {{end}}
+                    </ul>
+                    {{else}}
+                        <p class="text-gray-500 text-sm">Список доступа пуст.</p>
+                    {{end}}
                 </div>
-                {{else}}
-                    <p class="text-gray-500">Нет тестов.</p>
-                {{end}}
+
+                <!-- Test Cases List -->
+                <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+                    <h2 class="text-xl font-bold mb-4">Тестовые данные</h2>
+                    {{if .Problem.TestCases}}
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full leading-normal">
+                            <thead>
+                                <tr>
+                                    <th class="px-4 py-2 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID</th>
+                                    <th class="px-4 py-2 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ввод (Preview)</th>
+                                    <th class="px-4 py-2 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Тип</th>
+                                    <th class="px-4 py-2 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Действие</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{range .Problem.TestCases}}
+                                <tr>
+                                    <td class="px-4 py-2 border-b border-gray-200 bg-white text-sm">{{.ID}}</td>
+                                    <td class="px-4 py-2 border-b border-gray-200 bg-white text-sm font-mono text-xs truncate max-w-xs">{{.Input}}</td>
+                                    <td class="px-4 py-2 border-b border-gray-200 bg-white text-sm">
+                                        {{if .IsSample}}
+                                            <span class="bg-blue-200 text-blue-800 py-1 px-2 rounded-full text-xs">Sample</span>
+                                        {{else}}
+                                            <span class="bg-gray-200 text-gray-800 py-1 px-2 rounded-full text-xs">Hidden</span>
+                                        {{end}}
+                                    </td>
+                                    <td class="px-4 py-2 border-b border-gray-200 bg-white text-sm">
+                                        {{if ne $.Problem.Status "approved"}}
+                                        <a href="/delete-testcase?id={{.ID}}&problem_id={{$.Problem.ID}}" class="text-red-600 hover:text-red-900 text-xs" onclick="return confirm('Удалить этот тест?')">Удалить</a>
+                                        {{else}}
+                                        <span class="text-gray-400 text-xs">Заблокировано</span>
+                                        {{end}}
+                                    </td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
+                    {{else}}
+                        <p class="text-gray-500">Нет тестов.</p>
+                    {{end}}
+                </div>
             </div>
         </div>
     </div>

@@ -77,7 +77,7 @@
                             <th class="px-5 py-3 text-left border-b-2 border-gray-200">Статус</th>
                             <th class="px-5 py-3 text-left border-b-2 border-gray-200">Язык</th>
                             <th class="px-5 py-3 text-left border-b-2 border-gray-200">Время вып.</th>
-                            <th class="px-5 py-3 text-left border-b-2 border-gray-200">Код</th>
+                            <th class="px-5 py-3 text-left border-b-2 border-gray-200">Детали</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -108,7 +108,7 @@
                                 {{.ExecutionTime}}
                             </td>
                             <td class="px-5 py-4 border-b border-gray-200 bg-white text-sm">
-                                <button onclick="fetchAndShowCode({{.ID}})" class="text-blue-600 hover:text-blue-900 font-medium text-xs underline">
+                                <button onclick="fetchAndShowDetails({{.ID}})" class="text-blue-600 hover:text-blue-900 font-medium text-xs underline">
                                     Посмотреть
                                 </button>
                             </td>
@@ -134,20 +134,50 @@
         </div>
     </div>
 
-    <!-- Code Modal -->
-    <div id="codeModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center">
-        <div class="relative p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white max-h-[90vh] flex flex-col">
+    <!-- Details Modal -->
+    <div id="detailsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+        <div class="relative p-5 border w-11/12 md:w-3/4 lg:w-2/3 shadow-lg rounded-md bg-white max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">Исходный код</h3>
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Детали решения</h3>
                 <button id="closeModal" class="text-gray-400 hover:text-gray-500 focus:outline-none">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
-            <div class="mt-2 flex-grow overflow-auto bg-gray-50 rounded border border-gray-200">
-                <pre id="modalCodeContent" class="p-4 font-mono text-sm text-gray-800 whitespace-pre-wrap break-words"></pre>
+
+            <div class="flex-grow overflow-auto">
+                <!-- Code Section -->
+                <div class="mb-4">
+                    <h4 class="font-bold text-sm text-gray-700 mb-2">Исходный код</h4>
+                    <div class="bg-gray-50 rounded border border-gray-200 p-2">
+                        <pre id="modalCodeContent" class="font-mono text-xs text-gray-800 whitespace-pre-wrap break-words max-h-40 overflow-y-auto"></pre>
+                    </div>
+                </div>
+
+                <!-- Test Cases Section -->
+                <div>
+                    <h4 class="font-bold text-sm text-gray-700 mb-2">Результаты тестов</h4>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full leading-normal border border-gray-200">
+                            <thead>
+                                <tr class="bg-gray-100 text-gray-600 text-xs uppercase font-semibold">
+                                    <th class="px-3 py-2 text-left border-b">Тест</th>
+                                    <th class="px-3 py-2 text-left border-b">Статус</th>
+                                    <th class="px-3 py-2 text-left border-b">Время</th>
+                                    <th class="px-3 py-2 text-left border-b">Ввод</th>
+                                    <th class="px-3 py-2 text-left border-b">Ожидалось</th>
+                                    <th class="px-3 py-2 text-left border-b">Получено</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modalTestsContent">
+                                <!-- Rows will be inserted here by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
+
             <div class="mt-4 flex justify-end">
                 <button id="closeModalBtn" class="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 transition duration-300">
                     Закрыть
@@ -157,21 +187,50 @@
     </div>
 
     <script>
-        const modal = document.getElementById('codeModal');
-        const modalContent = document.getElementById('modalCodeContent');
+        const modal = document.getElementById('detailsModal');
+        const modalCode = document.getElementById('modalCodeContent');
+        const modalTests = document.getElementById('modalTestsContent');
         const closeBtn = document.getElementById('closeModal');
         const closeBtnBottom = document.getElementById('closeModalBtn');
 
-        function fetchAndShowCode(submissionId) {
+        function fetchAndShowDetails(submissionId) {
             fetch('/submission?id=' + submissionId)
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error("Не удалось загрузить код.");
+                        throw new Error("Не удалось загрузить детали.");
                     }
-                    return response.text();
+                    return response.json();
                 })
-                .then(code => {
-                    modalContent.textContent = code;
+                .then(data => {
+                    // Set Code
+                    modalCode.textContent = data.source_code;
+
+                    // Set Tests
+                    modalTests.innerHTML = '';
+                    if (data.details && data.details.length > 0) {
+                        data.details.forEach((detail, index) => {
+                            const row = document.createElement('tr');
+                            row.className = 'border-b border-gray-100 hover:bg-gray-50';
+
+                            let statusClass = 'text-gray-600';
+                            if (detail.Status === 'Accepted') statusClass = 'text-green-600 font-bold';
+                            else if (detail.Status === 'Wrong Answer') statusClass = 'text-red-600 font-bold';
+                            else statusClass = 'text-yellow-600 font-bold';
+
+                            row.innerHTML = `
+                                <td class="px-3 py-2 text-xs text-gray-500">#${index + 1}</td>
+                                <td class="px-3 py-2 text-xs ${statusClass}">${detail.Status}</td>
+                                <td class="px-3 py-2 text-xs font-mono">${detail.ExecutionTime}</td>
+                                <td class="px-3 py-2 text-xs font-mono truncate max-w-[100px]" title="${detail.InputPreview}">${detail.InputPreview}</td>
+                                <td class="px-3 py-2 text-xs font-mono truncate max-w-[100px]" title="${detail.ExpectedPreview}">${detail.ExpectedPreview}</td>
+                                <td class="px-3 py-2 text-xs font-mono truncate max-w-[100px]" title="${detail.OutputPreview}">${detail.OutputPreview}</td>
+                            `;
+                            modalTests.appendChild(row);
+                        });
+                    } else {
+                        modalTests.innerHTML = '<tr><td colspan="6" class="px-3 py-4 text-center text-sm text-gray-500">Детали тестов отсутствуют (возможно, старая запись)</td></tr>';
+                    }
+
                     modal.classList.remove('hidden');
                 })
                 .catch(error => {

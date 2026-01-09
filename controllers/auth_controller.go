@@ -1,8 +1,7 @@
-package handlers
+package controllers
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -17,17 +16,16 @@ import (
 
 // GetUser retrieves the full User object from the cookie
 func GetUser(r *http.Request) *models.User {
-	cookie, err := r.Cookie("user_email") // Changed to use email as key
+	cookie, err := r.Cookie("user_email")
 	if err != nil {
 		return nil
 	}
 	email, _ := url.QueryUnescape(cookie.Value)
 
 	var user models.User
-	err = database.DB.QueryRow("SELECT id, google_id, email, name, role FROM users WHERE email = $1", email).
-		Scan(&user.ID, &user.GoogleID, &user.Email, &user.Name, &user.Role)
-
-	if err != nil {
+	result := database.DB.Where("email = ?", email).First(&user)
+	
+	if result.Error != nil {
 		return nil
 	}
 	return &user
@@ -63,26 +61,27 @@ func HandleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Save or Update User in DB
-	var dbUser models.User
-	err = database.DB.QueryRow("SELECT id, role FROM users WHERE email = $1", gUser.Email).Scan(&dbUser.ID, &dbUser.Role)
+	// Save or Update User in DB using GORM
+	var user models.User
+	result := database.DB.Where("email = ?", gUser.Email).First(&user)
 
-	if err == sql.ErrNoRows {
+	if result.Error != nil {
 		// Create new user
-		err = database.DB.QueryRow("INSERT INTO users (google_id, email, name, role) VALUES ($1, $2, $3, 'user') RETURNING id, role",
-			gUser.ID, gUser.Email, gUser.Name).Scan(&dbUser.ID, &dbUser.Role)
-	} else if err == nil {
-		// Update existing user name if changed
-		_, err = database.DB.Exec("UPDATE users SET name = $1, google_id = $2 WHERE email = $3", gUser.Name, gUser.ID, gUser.Email)
+		user = models.User{
+			GoogleID: gUser.ID,
+			Email:    gUser.Email,
+			Name:     gUser.Name,
+			Role:     "user",
+		}
+		database.DB.Create(&user)
+	} else {
+		// Update existing user
+		user.Name = gUser.Name
+		user.GoogleID = gUser.ID
+		database.DB.Save(&user)
 	}
 
-	if err != nil {
-		fmt.Println("Database error:", err)
-		http.Error(w, "Database error", http.StatusInternalServerError)
-		return
-	}
-
-	// Set cookie with Email (more unique than name)
+	// Set cookie with Email
 	encodedEmail := url.QueryEscape(gUser.Email)
 	cookie := &http.Cookie{
 		Name:    "user_email",
@@ -91,17 +90,6 @@ func HandleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		Path:    "/",
 	}
 	http.SetCookie(w, cookie)
-
-	// Also set user_name for compatibility with existing templates if needed,
-	// but better to switch to user object in templates
-	encodedName := url.QueryEscape(gUser.Name)
-	cookieName := &http.Cookie{
-		Name:    "user_name",
-		Value:   encodedName,
-		Expires: time.Now().Add(24 * time.Hour),
-		Path:    "/",
-	}
-	http.SetCookie(w, cookieName)
 
 	tmpl := template.Must(template.ParseFiles("templates/welcome.html"))
 	tmpl.Execute(w, gUser)
