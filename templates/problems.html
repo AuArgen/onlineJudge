@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Задачи - Online Judge</title>
+    <title>Задачи - {{.AppName}}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         function toggleMenu() {
@@ -15,14 +15,14 @@
 <body class="bg-gray-100 flex flex-col min-h-screen">
     <nav class="bg-white shadow-lg mb-8">
         <div class="max-w-6xl mx-auto px-4">
-            <div class="flex justify-between">
-                <div class="flex space-x-7">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center">
                     <div>
                         <a href="/" class="flex items-center py-4 px-2">
-                            <span class="font-semibold text-gray-500 text-lg">Online Judge</span>
+                            <span class="font-semibold text-gray-500 text-lg">{{.AppName}}</span>
                         </a>
                     </div>
-                    <div class="hidden md:flex items-center space-x-1">
+                    <div class="hidden md:flex items-center space-x-1 ml-6">
                         <a href="/problems" class="py-4 px-2 text-green-500 border-b-4 border-green-500 font-semibold ">Задачи</a>
                     </div>
                 </div>

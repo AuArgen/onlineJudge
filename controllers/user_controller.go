@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"onlineJudge/database"
 	"onlineJudge/models"
+	"os"
 )
 
 // HandleProfile displays the user's profile page
@@ -29,18 +30,19 @@ func HandleProfile(w http.ResponseWriter, r *http.Request) {
 	database.DB.Model(&models.SubmissionRecord{}).
 		Where("user_id = ?", user.ID).Count(&totalSubmissions)
 
-	data := struct {
-		User             *models.User
-		MyProblems       []models.Problem
-		SolvedCount      int64
-		TotalSubmissions int64
-	}{
+	appName := os.Getenv("APP_NAME")
+	if appName == "" {
+		appName = "Online Judge"
+	}
+
+	data := ProfileData{
+		AppName:          appName,
 		User:             user,
 		MyProblems:       myProblems,
 		SolvedCount:      solvedCount,
 		TotalSubmissions: totalSubmissions,
 	}
 
-	tmpl := template.Must(template.ParseFiles("templates/profile.html"))
+	tmpl := template.Must(template.ParseFiles("templates/profile.html", "templates/header.html", "templates/footer.html"))
 	tmpl.Execute(w, data)
 }

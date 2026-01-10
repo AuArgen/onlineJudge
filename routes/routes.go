@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"net/http"
 	"onlineJudge/controllers"
+	"os"
 )
 
 func SetupRoutes() {
@@ -42,12 +43,34 @@ func SetupRoutes() {
 }
 
 func handleMain(w http.ResponseWriter, r *http.Request) {
-	user := controllers.GetUser(r)
-	data := struct {
-		User interface{}
-	}{
-		User: user,
+	// Check if path is exactly "/"
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
 	}
-	tmpl := template.Must(template.ParseFiles("templates/index.html"))
-	tmpl.Execute(w, data)
+
+	user := controllers.GetUser(r)
+	appName := os.Getenv("APP_NAME")
+	if appName == "" {
+		appName = "Online Judge"
+	}
+
+	data := controllers.CommonData{
+		AppName:    appName,
+		Title:      "Главная",
+		ActivePage: "home", // Set ActivePage
+		User:       user,
+	}
+
+	// Parse all necessary templates
+	tmpl, err := template.ParseFiles("templates/index.html", "templates/header.html", "templates/footer.html")
+	if err != nil {
+		http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		// Log error
+	}
 }

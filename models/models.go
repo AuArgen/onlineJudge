@@ -48,11 +48,17 @@ type TestCase struct {
 }
 
 // ProblemAccess stores which users have explicit access to private problems
+// Table name will be 'problem_access' by default GORM convention (snake_case of struct name)
 type ProblemAccess struct {
 	ID        uint `gorm:"primaryKey"`
 	ProblemID uint
 	UserEmail string
 	CreatedAt time.Time
+}
+
+// TableName overrides the table name to ensure it matches our queries
+func (ProblemAccess) TableName() string {
+	return "problem_access"
 }
 
 // Submission (Input DTO) - Not a DB model, used for passing data to compiler
@@ -92,7 +98,7 @@ type SubmissionDetail struct {
 	InputPreview    string
 	OutputPreview   string
 	ExpectedPreview string
-	IsSample        bool `gorm:"default:false"` // Added field to track if it was a sample test
+	IsSample        bool `gorm:"default:false"`
 }
 
 // GoogleUser holds user information from Google OAuth (DTO)

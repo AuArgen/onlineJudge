@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"onlineJudge/database"
 	"onlineJudge/models"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -33,9 +34,17 @@ func getProblem(id int) (*models.Problem, error) {
 	return &p, nil
 }
 
+func getAppName() string {
+	appName := os.Getenv("APP_NAME")
+	if appName == "" {
+		return "Online Judge"
+	}
+	return appName
+}
+
 func HandleProblems(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
-	
+
 	// Params
 	pageStr := r.URL.Query().Get("page")
 	page, err := strconv.Atoi(pageStr)
@@ -57,13 +66,14 @@ func HandleProblems(w http.ResponseWriter, r *http.Request) {
 
 	// Join with Users to search by author name if needed
 	// Note: GORM joins can be tricky, using simple approach first
-	
+
 	// 1. Visibility Logic
 	if user != nil {
 		// Public OR Own OR Access List
+		// We use a raw SQL fragment for the OR condition because GORM's Or() can be tricky with groups
 		// Subquery for access list
 		accessSubQuery := database.DB.Table("problem_access").Select("problem_id").Where("user_email = ?", user.Email)
-		
+
 		db = db.Where("visibility = 'public' OR author_id = ? OR id IN (?)", user.ID, accessSubQuery)
 	} else {
 		db = db.Where("visibility = 'public'")
@@ -114,22 +124,33 @@ func HandleProblems(w http.ResponseWriter, r *http.Request) {
 		database.DB.Model(&models.SubmissionRecord{}).
 			Where("problem_id = ? AND status = ?", p.ID, "Принято").
 			Distinct("user_id").Count(&count)
-		
+
 		isOwner := user != nil && user.ID == p.AuthorID
-		
-		// Check if current user solved it (for UI indication if needed later)
-		// We don't have IsSolved in ProblemData yet, but good to have logic ready
-		
+
+		isSolved := false
+		if user != nil {
+			var myCount int64
+			database.DB.Model(&models.SubmissionRecord{}).
+				Where("problem_id = ? AND user_id = ? AND status = ?", p.ID, user.ID, "Принято").Count(&myCount)
+			if myCount > 0 {
+				isSolved = true
+			}
+		}
+
 		displayProblems = append(displayProblems, ProblemData{
 			Problem:     p,
 			SolvedCount: count,
 			IsOwner:     isOwner,
+			IsSolved:    isSolved,
 		})
 	}
 
 	totalPages := int((totalItems + int64(itemsPerPage) - 1) / int64(itemsPerPage))
 
 	data := PageData{
+		AppName:     getAppName(),
+		Title:       "Список задач",
+		ActivePage:  "problems", // Set ActivePage
 		Problems:    displayProblems,
 		User:        user,
 		CurrentPage: page,
@@ -138,12 +159,12 @@ func HandleProblems(w http.ResponseWriter, r *http.Request) {
 		HasNext:     page < totalPages,
 		PrevPage:    page - 1,
 		NextPage:    page + 1,
-		// Pass params back to template for UI state
-		// We need to add these fields to PageData struct in types.go first!
-		// For now, we rely on URL params in template links
+		Filter:      filter,
+		Sort:        sort,
+		Search:      search,
 	}
 
-	tmpl := template.Must(template.ParseFiles("templates/problems.html"))
+	tmpl := template.Must(template.ParseFiles("templates/problems.html", "templates/header.html", "templates/footer.html"))
 	tmpl.Execute(w, data)
 }
 
@@ -157,7 +178,7 @@ func HandleCreateProblem(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		timeLimit, _ := strconv.ParseFloat(r.FormValue("time_limit"), 64)
 		memoryLimit, _ := strconv.Atoi(r.FormValue("memory_limit"))
-		
+
 		problem := models.Problem{
 			AuthorID:    user.ID,
 			Title:       r.FormValue("title"),
@@ -167,7 +188,7 @@ func HandleCreateProblem(w http.ResponseWriter, r *http.Request) {
 			Visibility:  "private",
 			Status:      "draft",
 		}
-		
+
 		if err := database.DB.Create(&problem).Error; err != nil {
 			http.Error(w, "Error creating problem: "+err.Error(), http.StatusInternalServerError)
 			return
@@ -190,8 +211,15 @@ func HandleCreateProblem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl := template.Must(template.ParseFiles("templates/create_problem.html"))
-	tmpl.Execute(w, user)
+	data := CommonData{
+		AppName:    getAppName(),
+		Title:      "Создать задачу",
+		ActivePage: "create_problem",
+		User:       user,
+	}
+
+	tmpl := template.Must(template.ParseFiles("templates/create_problem.html", "templates/header.html", "templates/footer.html"))
+	tmpl.Execute(w, data)
 }
 
 func HandleEditProblem(w http.ResponseWriter, r *http.Request) {
@@ -263,7 +291,7 @@ func HandleEditProblem(w http.ResponseWriter, r *http.Request) {
 			access := models.ProblemAccess{ProblemID: p.ID, UserEmail: accessEmail}
 			database.DB.Create(&access)
 		}
-		
+
 		removeEmail := r.FormValue("remove_access")
 		if removeEmail != "" {
 			database.DB.Where("problem_id = ? AND user_email = ?", p.ID, removeEmail).Delete(&models.ProblemAccess{})
@@ -275,26 +303,25 @@ func HandleEditProblem(w http.ResponseWriter, r *http.Request) {
 
 	// Load Test Cases and Access List
 	database.DB.Where("problem_id = ?", id).Order("id asc").Find(&p.TestCases)
-	
+
 	var accessList []models.ProblemAccess
 	database.DB.Where("problem_id = ?", id).Find(&accessList)
-	
+
 	var emails []string
 	for _, a := range accessList {
 		emails = append(emails, a.UserEmail)
 	}
 
-	data := struct {
-		Problem    models.Problem
-		User       *models.User
-		AccessList []string
-	}{
+	data := EditProblemData{
+		AppName:    getAppName(),
+		Title:      "Редактировать задачу",
+		ActivePage: "edit_problem",
 		Problem:    *p,
 		User:       user,
 		AccessList: emails,
 	}
 
-	tmpl := template.Must(template.ParseFiles("templates/edit_problem.html"))
+	tmpl := template.Must(template.ParseFiles("templates/edit_problem.html", "templates/header.html", "templates/footer.html"))
 	tmpl.Execute(w, data)
 }
 
@@ -324,7 +351,6 @@ func HandleDeleteProblem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// GORM handles cascade delete if configured, but explicit delete is safer here
 	database.DB.Where("problem_id = ?", id).Delete(&models.TestCase{})
 	database.DB.Where("problem_id = ?", id).Delete(&models.SubmissionRecord{})
 	database.DB.Where("problem_id = ?", id).Delete(&models.ProblemAccess{})
@@ -343,8 +369,10 @@ func HandleDeleteTestCase(w http.ResponseWriter, r *http.Request) {
 	tcID, _ := strconv.Atoi(r.URL.Query().Get("id"))
 	pID, _ := strconv.Atoi(r.URL.Query().Get("problem_id"))
 
+	// Verify ownership using GORM
 	var p models.Problem
-	if err := database.DB.First(&p, pID).Error; err != nil {
+	// Only fetch necessary fields
+	if err := database.DB.Select("author_id, status").First(&p, pID).Error; err != nil {
 		http.NotFound(w, r)
 		return
 	}
@@ -379,7 +407,7 @@ func HandleSolve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := GetUser(r)
-	
+
 	if p.Visibility == "private" {
 		allowed := false
 		if user != nil {
@@ -411,15 +439,10 @@ func HandleSolve(w http.ResponseWriter, r *http.Request) {
 	secondsStr := r.URL.Query().Get("seconds")
 	secondsLeft, _ := strconv.Atoi(secondsStr)
 
-	data := struct {
-		Problem     models.Problem
-		Languages   []models.Language
-		User        *models.User
-		HasPending  bool
-		ErrorMsg    string
-		SecondsLeft int
-		IsOwner     bool
-	}{
+	data := SolveData{
+		AppName:     getAppName(),
+		Title:       p.Title,
+		ActivePage:  "solve",
 		Problem:     *p,
 		Languages:   Languages,
 		User:        user,
@@ -429,6 +452,6 @@ func HandleSolve(w http.ResponseWriter, r *http.Request) {
 		IsOwner:     user != nil && user.ID == p.AuthorID,
 	}
 
-	tmpl := template.Must(template.ParseFiles("templates/solve.html"))
+	tmpl := template.Must(template.ParseFiles("templates/solve.html", "templates/header.html", "templates/footer.html"))
 	tmpl.Execute(w, data)
 }

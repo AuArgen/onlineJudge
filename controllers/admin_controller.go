@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"onlineJudge/database"
 	"onlineJudge/models"
+	"os"
 	"strconv"
 )
 
@@ -21,15 +22,18 @@ func HandleAdminPanel(w http.ResponseWriter, r *http.Request) {
 	// Preload Author to get name
 	database.DB.Preload("Author").Where("status = ?", "pending_review").Order("created_at desc").Find(&pendingProblems)
 
-	data := struct {
-		PendingProblems []models.Problem
-		User            *models.User
-	}{
+	appName := os.Getenv("APP_NAME")
+	if appName == "" {
+		appName = "Online Judge"
+	}
+
+	data := AdminData{
+		AppName:         appName,
 		PendingProblems: pendingProblems,
 		User:            user,
 	}
 
-	tmpl := template.Must(template.ParseFiles("templates/admin.html"))
+	tmpl := template.Must(template.ParseFiles("templates/admin.html", "templates/header.html", "templates/footer.html"))
 	tmpl.Execute(w, data)
 }
 

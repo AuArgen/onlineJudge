@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"onlineJudge/config"
 	"onlineJudge/database"
 	"onlineJudge/models"
+	"os"
 	"time"
 )
 
@@ -24,8 +24,9 @@ func GetUser(r *http.Request) *models.User {
 
 	var user models.User
 	result := database.DB.Where("email = ?", email).First(&user)
-	
+
 	if result.Error != nil {
+		// Record not found or DB error, treat as not logged in
 		return nil
 	}
 	return &user
@@ -61,6 +62,13 @@ func HandleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Determine Role
+	role := "user"
+	adminEmail := os.Getenv("ADMIN_EMAIL")
+	if adminEmail != "" && gUser.Email == adminEmail {
+		role = "admin"
+	}
+
 	// Save or Update User in DB using GORM
 	var user models.User
 	result := database.DB.Where("email = ?", gUser.Email).First(&user)
@@ -71,13 +79,17 @@ func HandleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 			GoogleID: gUser.ID,
 			Email:    gUser.Email,
 			Name:     gUser.Name,
-			Role:     "user",
+			Role:     role,
 		}
 		database.DB.Create(&user)
 	} else {
 		// Update existing user
 		user.Name = gUser.Name
 		user.GoogleID = gUser.ID
+		// If user is supposed to be admin but isn't, upgrade them
+		if role == "admin" && user.Role != "admin" {
+			user.Role = "admin"
+		}
 		database.DB.Save(&user)
 	}
 
@@ -91,8 +103,9 @@ func HandleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, cookie)
 
-	tmpl := template.Must(template.ParseFiles("templates/welcome.html"))
-	tmpl.Execute(w, gUser)
+	// Redirect to home page instead of showing welcome template directly
+	// This ensures proper template loading with header/footer
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func getUserInfo(state string, code string) ([]byte, error) {

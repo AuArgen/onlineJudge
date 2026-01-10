@@ -4,8 +4,9 @@ services:
   app:
     build: .
     ports:
-      - "${APP_PORT}:8000" # Host Port from .env -> Container Port 8000
+      - "${APP_PORT}:8000"
     environment:
+      - APP_NAME=${APP_NAME}
       - APP_PORT=${APP_PORT}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
@@ -15,8 +16,10 @@ services:
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock # Give access to Docker Daemon
+      - .:/app # Mount current directory to /app inside container for Hot Reload
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - db
     restart: always
@@ -24,7 +27,7 @@ services:
   db:
     image: postgres:13
     ports:
-      - "5433:5432"
+      - "${DB_EXTERNAL_PORT}:5432"
     environment:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}

@@ -9,6 +9,9 @@ RUN apt-get update && apt-get install -y \
     nodejs \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Air for hot reload (Use specific version to avoid go version issues)
+RUN go install github.com/cosmtrek/air@v1.49.0
+
 # Set the working directory inside the container
 WORKDIR /app
 
@@ -24,11 +27,11 @@ COPY . .
 # Run go mod tidy AFTER copying source code to detect all imports and apply replacements
 RUN go mod tidy
 
-# Build the application
+# Build the application (Optional, Air will build it too)
 RUN go build -o online-judge .
 
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Command to run the application
-CMD ["./online-judge"]
+# Command to run the application using Air
+CMD ["air", "-c", ".air.toml"]

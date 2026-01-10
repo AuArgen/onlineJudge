@@ -53,14 +53,12 @@ func InitDB() {
 	}
 
 	// Auto Migrate
-	// GORM will automatically create tables, missing columns and missing indexes.
-	// It WILL NOT delete unused columns to protect data.
 	log.Println("Running Auto Migration...")
 	err = DB.AutoMigrate(
 		&models.User{},
 		&models.Problem{},
 		&models.TestCase{},
-		&models.ProblemAccess{},
+		&models.ProblemAccess{}, // Ensure this is included!
 		&models.SubmissionRecord{},
 		&models.SubmissionDetail{},
 	)
@@ -68,17 +66,4 @@ func InitDB() {
 		log.Fatal("Migration failed: ", err)
 	}
 	log.Println("Database migration completed.")
-
-	// Seed Data (Optional: Add default admin or problems if DB is empty)
-	seedData()
-}
-
-func seedData() {
-	var count int64
-	DB.Model(&models.Problem{}).Count(&count)
-	if count == 0 {
-		log.Println("Seeding initial problems...")
-		// Add some default problems here if needed, or leave empty to start fresh
-		// For now, we rely on users creating problems via UI
-	}
 }
