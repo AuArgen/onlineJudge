@@ -30,14 +30,70 @@ func getUserIDFromToken(c *fiber.Ctx) (float64, string) {
 
 // GetProblems godoc
 // @Summary Get all problems
-// @Description Retrieve a list of public problems
+// @Description Retrieve a list of problems with filtering
 // @Tags Problems
 // @Produce json
+// @Param search query string false "Search by title"
+// @Param filter query string false "Filter: all, my, public, private"
 // @Success 200 {array} models.Problem
 // @Router /problems [get]
 func GetProblems(c *fiber.Ctx) error {
+	userID, role := getUserIDFromToken(c)
+	search := c.Query("search")
+	filter := c.Query("filter")
+
 	var problems []models.Problem
-	database.DB.Where("visibility = ?", "public").Find(&problems)
+	query := database.DB.Model(&models.Problem{})
+
+	// Base visibility logic
+	if role == "admin" {
+		// Admin sees everything
+	} else if userID > 0 {
+		// User sees public + own problems
+		query = query.Where("visibility = 'public' OR author_id = ?", userID)
+	} else {
+		// Guest sees only public
+		query = query.Where("visibility = 'public'")
+	}
+
+	// Additional Filters
+	switch filter {
+	case "my":
+		if userID > 0 {
+			query = query.Where("author_id = ?", userID)
+		} else {
+			return c.Status(401).JSON(fiber.Map{"error": "Unauthorized"})
+		}
+	case "public":
+		query = query.Where("visibility = 'public'")
+	case "private":
+		if userID > 0 {
+			query = query.Where("visibility = 'private' AND author_id = ?", userID)
+		} else {
+			return c.Status(401).JSON(fiber.Map{"error": "Unauthorized"})
+		}
+		// "all" is default (handled by base logic)
+	}
+
+	// Search
+	if search != "" {
+		query = query.Where("title ILIKE ?", "%"+search+"%")
+	}
+
+	query.Order("created_at desc").Find(&problems)
+
+	// Calculate SolvedCount for each problem
+	// Optimization: This N+1 query is slow for many problems.
+	// Better approach: Use a subquery or join, but for now loop is simple.
+	for i := range problems {
+		var count int64
+		database.DB.Model(&models.Submission{}).
+			Where("problem_id = ? AND status = 'Accepted'", problems[i].ID).
+			Distinct("user_id"). // Count unique users who solved it
+			Count(&count)
+		problems[i].SolvedCount = count
+	}
+
 	return c.JSON(problems)
 }
 

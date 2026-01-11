@@ -7,19 +7,12 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type ProfileResponse struct {
-	User             models.User      `json:"user"`
-	SolvedCount      int64            `json:"solved_count"`
-	TotalSubmissions int64            `json:"total_submissions"`
-	MyProblems       []models.Problem `json:"my_problems"`
-}
-
 // GetProfile godoc
 // @Summary Get user profile
-// @Description Get current user profile with stats and problems
+// @Description Get current user profile
 // @Tags User
 // @Produce json
-// @Success 200 {object} ProfileResponse
+// @Success 200 {object} models.User
 // @Router /profile [get]
 func GetProfile(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(float64)
@@ -29,24 +22,35 @@ func GetProfile(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
 	}
 
-	// Stats
-	var solvedCount int64
-	database.DB.Model(&models.Submission{}).
-		Where("user_id = ? AND status = 'Accepted'", userID).
-		Distinct("problem_id").Count(&solvedCount)
+	return c.JSON(user)
+}
 
-	var totalSubmissions int64
-	database.DB.Model(&models.Submission{}).
-		Where("user_id = ?", userID).Count(&totalSubmissions)
+type LeaderboardEntry struct {
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	SolvedCount int64  `json:"solved_count"`
+}
 
-	// My Problems
-	var myProblems []models.Problem
-	database.DB.Where("author_id = ?", userID).Order("created_at desc").Find(&myProblems)
+// GetLeaderboard godoc
+// @Summary Get leaderboard
+// @Description Get top users by solved problems
+// @Tags User
+// @Produce json
+// @Success 200 {array} LeaderboardEntry
+// @Router /leaderboard [get]
+func GetLeaderboard(c *fiber.Ctx) error {
+	var leaderboard []LeaderboardEntry
 
-	return c.JSON(ProfileResponse{
-		User:             user,
-		SolvedCount:      solvedCount,
-		TotalSubmissions: totalSubmissions,
-		MyProblems:       myProblems,
-	})
+	// Raw SQL is often easier for complex aggregations like this
+	// Count unique problem_id where status is 'Accepted' for each user
+	database.DB.Raw(`
+		SELECT u.id, u.name, COUNT(DISTINCT s.problem_id) as solved_count
+		FROM users u
+		LEFT JOIN submissions s ON u.id = s.user_id AND s.status = 'Accepted'
+		GROUP BY u.id, u.name
+		ORDER BY solved_count DESC
+		LIMIT 50
+	`).Scan(&leaderboard)
+
+	return c.JSON(leaderboard)
 }

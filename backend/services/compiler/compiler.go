@@ -30,10 +30,37 @@ type ExecutionResult struct {
 	ExecutionTime string
 }
 
+// Basic security check for dangerous keywords
+func checkSecurity(code string, langID int) error {
+	dangerous := []string{}
+	switch langID {
+	case 71: // Python
+		dangerous = []string{"os.system", "subprocess", "exec(", "eval(", "open(", "import os", "import subprocess"}
+	case 63: // Node.js
+		dangerous = []string{"child_process", "exec(", "spawn(", "fs.", "process.exit"}
+	case 60: // Go
+		dangerous = []string{"os/exec", "syscall", "net/http", "os.Exit"}
+	case 54: // C++
+		dangerous = []string{"system(", "exec(", "fork(", "popen("}
+	case 62: // Java
+		dangerous = []string{"Runtime.getRuntime", "ProcessBuilder", "System.exit"}
+	}
+
+	for _, keyword := range dangerous {
+		if strings.Contains(code, keyword) {
+			return fmt.Errorf("security violation: forbidden keyword '%s'", keyword)
+		}
+	}
+	return nil
+}
+
 // ExecuteCode runs the submission in an isolated Docker container
 func ExecuteCode(sub CompilerSubmission) (ExecutionResult, error) {
+	if err := checkSecurity(sub.SourceCode, sub.LanguageID); err != nil {
+		return ExecutionResult{}, err
+	}
+
 	ctx := context.Background()
-	// Force API version to 1.44 (compatible with newer Docker daemons)
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.44"))
 	if err != nil {
 		return ExecutionResult{}, fmt.Errorf("failed to create docker client: %v", err)
@@ -44,6 +71,15 @@ func ExecuteCode(sub CompilerSubmission) (ExecutionResult, error) {
 	var compileCmd []string
 	var runCmd []string
 	var fileName string
+	var env []string
+
+	// Adjust TimeLimit for compiled languages or 'go run' which includes build time
+	effectiveTimeLimit := sub.TimeLimit
+	if sub.LanguageID == 60 { // Go
+		effectiveTimeLimit += 10.0 // Add 10s buffer for 'go run' compilation (first run is slow)
+	} else if sub.LanguageID == 62 { // Java
+		effectiveTimeLimit += 2.0 // Java startup is slow
+	}
 
 	switch sub.LanguageID {
 	case 71: // Python 3.8
@@ -55,10 +91,10 @@ func ExecuteCode(sub CompilerSubmission) (ExecutionResult, error) {
 		fileName = "main.js"
 		runCmd = []string{"node", fileName}
 	case 60: // Go
-		imageName = "golang:1.21"
+		imageName = "golang:1.23-alpine"
 		fileName = "main.go"
-		compileCmd = []string{"go", "build", "-o", "main", "main.go"}
-		runCmd = []string{"./main"}
+		env = []string{"GOCACHE=/tmp/gocache", "CGO_ENABLED=0"}
+		runCmd = []string{"go", "run", "main.go"}
 	case 54: // C++ (GCC)
 		imageName = "gcc:latest"
 		fileName = "main.cpp"
@@ -73,18 +109,15 @@ func ExecuteCode(sub CompilerSubmission) (ExecutionResult, error) {
 		return ExecutionResult{}, fmt.Errorf("unsupported language id: %d", sub.LanguageID)
 	}
 
-	// 0. Ensure Image Exists
 	if err := ensureImage(ctx, cli, imageName); err != nil {
 		return ExecutionResult{}, fmt.Errorf("failed to pull image %s: %v", imageName, err)
 	}
 
-	// Calculate memory limit
 	memoryLimitMB := sub.MemoryLimit
 	if memoryLimitMB < 512 {
 		memoryLimitMB = 512
 	}
 
-	// 1. Create Container (Idle)
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image:           imageName,
 		Cmd:             []string{"sleep", "infinity"},
@@ -92,6 +125,7 @@ func ExecuteCode(sub CompilerSubmission) (ExecutionResult, error) {
 		NetworkDisabled: true,
 		OpenStdin:       true,
 		WorkingDir:      "/app",
+		Env:             env,
 	}, &container.HostConfig{
 		Resources: container.Resources{
 			Memory:   int64(memoryLimitMB * 1024 * 1024),
@@ -107,23 +141,21 @@ func ExecuteCode(sub CompilerSubmission) (ExecutionResult, error) {
 		cli.ContainerRemove(ctx, containerID, container.RemoveOptions{Force: true})
 	}()
 
-	// 2. Start Container
 	if err := cli.ContainerStart(ctx, containerID, container.StartOptions{}); err != nil {
 		return ExecutionResult{}, fmt.Errorf("failed to start container: %v", err)
 	}
 
-	// 3. Copy Source Code
 	if err := copyToContainer(ctx, cli, containerID, fileName, sub.SourceCode); err != nil {
 		return ExecutionResult{}, fmt.Errorf("failed to copy code: %v", err)
 	}
 
-	// 4. Compile (if needed)
 	if len(compileCmd) > 0 {
 		execConfig := types.ExecConfig{
 			Cmd:          compileCmd,
 			AttachStderr: true,
 			AttachStdout: true,
 			WorkingDir:   "/app",
+			Env:          env,
 		}
 		execIDResp, err := cli.ContainerExecCreate(ctx, containerID, execConfig)
 		if err != nil {
@@ -145,13 +177,13 @@ func ExecuteCode(sub CompilerSubmission) (ExecutionResult, error) {
 		}
 	}
 
-	// 5. Run Code
 	execConfig := types.ExecConfig{
 		Cmd:          runCmd,
 		AttachStdin:  true,
 		AttachStdout: true,
 		AttachStderr: true,
 		WorkingDir:   "/app",
+		Env:          env,
 	}
 	execIDResp, err := cli.ContainerExecCreate(ctx, containerID, execConfig)
 	if err != nil {
@@ -164,7 +196,6 @@ func ExecuteCode(sub CompilerSubmission) (ExecutionResult, error) {
 	}
 	defer respAttach.Close()
 
-	// Write Input to Stdin
 	go func() {
 		defer respAttach.CloseWrite()
 		io.Copy(respAttach.Conn, strings.NewReader(sub.Stdin))
@@ -179,19 +210,17 @@ func ExecuteCode(sub CompilerSubmission) (ExecutionResult, error) {
 		outputDone <- err
 	}()
 
-	timeLimit := sub.TimeLimit
-	if timeLimit <= 0 {
-		timeLimit = 5.0
+	if effectiveTimeLimit <= 0 {
+		effectiveTimeLimit = 5.0
 	}
 
 	select {
 	case <-outputDone:
-		// Process finished
-	case <-time.After(time.Duration(timeLimit*1000) * time.Millisecond):
+	case <-time.After(time.Duration(effectiveTimeLimit*1000) * time.Millisecond):
 		return ExecutionResult{
 			Stdout:        stdout.String(),
-			Stderr:        stderr.String() + fmt.Sprintf("\nExecution Timed Out (Limit: %.1fs)", timeLimit),
-			ExecutionTime: fmt.Sprintf(">%.1fs", timeLimit),
+			Stderr:        stderr.String() + fmt.Sprintf("\nExecution Timed Out (Limit: %.1fs)", sub.TimeLimit),
+			ExecutionTime: fmt.Sprintf(">%.1fs", sub.TimeLimit),
 		}, nil
 	}
 

@@ -10,7 +10,6 @@ function SubmissionDetailsModal({ submission, onClose }: { submission: any, onCl
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // If submission already has details (from immediate result), use it
     if (submission.details) {
       setDetails(submission);
       setLoading(false);
@@ -135,20 +134,14 @@ export default function ProblemDetail() {
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [cooldown, setCooldown] = useState(0);
 
-  // Load saved code from localStorage
   useEffect(() => {
     const savedCode = localStorage.getItem(`code_problem_${id}`);
-    if (savedCode) {
-      setCode(savedCode);
-    }
+    if (savedCode) setCode(savedCode);
     
     const savedLang = localStorage.getItem(`lang_problem_${id}`);
-    if (savedLang) {
-      setLanguage(savedLang);
-    }
+    if (savedLang) setLanguage(savedLang);
   }, [id]);
 
-  // Save code to localStorage on change
   useEffect(() => {
     if (code !== '// Write your code here') {
       localStorage.setItem(`code_problem_${id}`, code);
@@ -165,7 +158,6 @@ export default function ProblemDetail() {
     fetchHistory();
   }, [id]);
 
-  // Cooldown timer
   useEffect(() => {
     if (cooldown > 0) {
       const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
@@ -207,8 +199,8 @@ export default function ProblemDetail() {
       });
       const data = await res.json();
       setResult(data);
-      fetchHistory(); // Refresh history
-      setCooldown(3); // Set 3 seconds cooldown
+      fetchHistory();
+      setCooldown(3);
     } catch (error) {
       console.error(error);
       alert('Error submitting solution');
@@ -220,7 +212,7 @@ export default function ProblemDetail() {
   if (!problem) return <div className="p-10 text-center">Loading...</div>;
 
   return (
-    <div className="max-w-7xl mx-auto py-6 px-4 grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-80px)]">
+    <div className="max-w-7xl mx-auto py-6 px-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
       {selectedSubmission && (
         <SubmissionDetailsModal 
           submission={selectedSubmission} 
@@ -229,9 +221,9 @@ export default function ProblemDetail() {
       )}
 
       {/* Left Column: Problem & History */}
-      <div className="flex flex-col h-full overflow-hidden gap-6">
+      <div className="flex flex-col gap-6">
         {/* Problem Description */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 overflow-y-auto flex-grow">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h1 className="text-2xl font-bold mb-4 text-gray-900">{problem.title}</h1>
           
           <div className="flex gap-3 mb-6 text-xs font-medium text-gray-600">
@@ -268,11 +260,11 @@ export default function ProblemDetail() {
         </div>
 
         {/* History Table */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 h-1/3 overflow-hidden flex flex-col">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
           <h3 className="text-sm font-bold mb-3 text-gray-900 uppercase tracking-wide">История попыток</h3>
-          <div className="overflow-y-auto flex-grow">
+          <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50 sticky top-0">
+              <thead className="bg-gray-50">
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Язык</th>
@@ -315,81 +307,83 @@ export default function ProblemDetail() {
         </div>
       </div>
 
-      {/* Right Column: Editor & Result */}
-      <div className="flex flex-col h-full gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-grow flex flex-col">
-          <div className="flex justify-between items-center mb-3">
-            <select 
-              value={language} 
-              onChange={(e) => setLanguage(e.target.value)}
-              className="border rounded px-3 py-1.5 text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
-            >
-              <option value="python">Python</option>
-              <option value="cpp">C++</option>
-              <option value="java">Java</option>
-              <option value="go">Go</option>
-              <option value="javascript">Node.js</option>
-            </select>
-            <button 
-              onClick={handleSubmit}
-              disabled={submitting || cooldown > 0}
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-1.5 rounded-md text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-sm min-w-[140px] justify-center"
-            >
-              {submitting ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Проверка...
-                </>
-              ) : cooldown > 0 ? (
-                `Ждите ${cooldown}с`
-              ) : (
-                'Отправить решение'
-              )}
-            </button>
-          </div>
-
-          <div className="flex-grow border rounded-lg overflow-hidden shadow-inner">
-            <Editor
-              height="100%"
-              defaultLanguage="python"
-              language={language === 'cpp' ? 'cpp' : language}
-              value={code}
-              onChange={(value) => setCode(value || '')}
-              theme="vs-light"
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                padding: { top: 10 }
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Result Area (Immediate Feedback) */}
-        {result && (
-          <div className={`rounded-xl shadow-sm border p-5 transition-all duration-300 ${
-            result.status === 'Accepted' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-          }`}>
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <h3 className={`text-xl font-bold ${result.status === 'Accepted' ? 'text-green-700' : 'text-red-700'}`}>
-                  {result.status}
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Время выполнения: <span className="font-mono font-medium">{result.execution_time}</span>
-                </p>
-              </div>
-              <button onClick={() => setSelectedSubmission(result)} className="text-sm text-blue-600 hover:underline">
-                Подробнее
+      {/* Right Column: Editor & Result (Sticky) */}
+      <div className="flex flex-col gap-4">
+        <div className="sticky top-24 flex flex-col gap-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col">
+            <div className="flex justify-between items-center mb-3">
+              <select 
+                value={language} 
+                onChange={(e) => setLanguage(e.target.value)}
+                className="border rounded px-3 py-1.5 text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                <option value="python">Python</option>
+                <option value="cpp">C++</option>
+                <option value="java">Java</option>
+                <option value="go">Go</option>
+                <option value="javascript">Node.js</option>
+              </select>
+              <button 
+                onClick={handleSubmit}
+                disabled={submitting || cooldown > 0}
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-1.5 rounded-md text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-sm min-w-[140px] justify-center"
+              >
+                {submitting ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Проверка...
+                  </>
+                ) : cooldown > 0 ? (
+                  `Ждите ${cooldown}с`
+                ) : (
+                  'Отправить решение'
+                )}
               </button>
             </div>
+
+            <div className="border rounded-lg overflow-hidden shadow-inner h-[500px]">
+              <Editor
+                height="100%"
+                defaultLanguage="python"
+                language={language === 'cpp' ? 'cpp' : language}
+                value={code}
+                onChange={(value) => setCode(value || '')}
+                theme="vs-light"
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  padding: { top: 10 }
+                }}
+              />
+            </div>
           </div>
-        )}
+
+          {/* Result Area (Immediate Feedback) */}
+          {result && (
+            <div className={`rounded-xl shadow-sm border p-5 transition-all duration-300 ${
+              result.status === 'Accepted' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+            }`}>
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h3 className={`text-xl font-bold ${result.status === 'Accepted' ? 'text-green-700' : 'text-red-700'}`}>
+                    {result.status}
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Время выполнения: <span className="font-mono font-medium">{result.execution_time}</span>
+                  </p>
+                </div>
+                <button onClick={() => setSelectedSubmission(result)} className="text-sm text-blue-600 hover:underline">
+                  Подробнее
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

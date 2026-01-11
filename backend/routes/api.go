@@ -17,6 +17,7 @@ func SetupRoutes(app *fiber.App) {
 	// Problems (Public)
 	api.Get("/problems", controllers.GetProblems)
 	api.Get("/problems/:id", controllers.GetProblem)
+	api.Get("/leaderboard", controllers.GetLeaderboard) // New
 
 	// Protected Routes
 	api.Use(middleware.AuthRequired)
@@ -27,7 +28,7 @@ func SetupRoutes(app *fiber.App) {
 	// Test Cases
 	api.Post("/problems/:id/testcases", controllers.AddTestCase)
 	api.Delete("/problems/:id/testcases/:testcase_id", controllers.DeleteTestCase)
-	api.Post("/problems/generate-output", controllers.GenerateOutput) // New
+	api.Post("/problems/generate-output", controllers.GenerateOutput)
 
 	api.Post("/submit", controllers.SubmitSolution)
 	api.Get("/history", controllers.GetHistory)
