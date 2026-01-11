@@ -1,27 +1,43 @@
 version: '3.8'
 
 services:
-  app:
-    build: .
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "${APP_PORT}:8000"
     environment:
-      - APP_NAME=${APP_NAME}
-      - APP_PORT=${APP_PORT}
+      - APP_PORT=8000
+      - DATABASE_URL=host=db user=${DB_USER} password=${DB_PASSWORD} dbname=${DB_NAME} port=5432 sslmode=disable
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
+      - JWT_SECRET=${JWT_SECRET}
       - ADMIN_EMAIL=${ADMIN_EMAIL}
     volumes:
-      - .:/app # Mount current directory to /app inside container for Hot Reload
+      - ./backend:/app
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - db
+    restart: always
+    user: root
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    shm_size: '2gb' # SIGBUS катасын болтурбоо үчүн
+    ports:
+      - "${FRONTEND_PORT}:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:${APP_PORT}/api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next          # Бул контейнердин ичиндеги Build файлдарын сактап калат
+    depends_on:
+      - backend
     restart: always
 
   db:

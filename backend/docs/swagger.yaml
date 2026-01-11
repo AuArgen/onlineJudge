@@ -1,0 +1,419 @@
+basePath: /api
+definitions:
+  controllers.AuthResponse:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/models.User'
+    type: object
+  controllers.GoogleCallbackRequest:
+    properties:
+      code:
+        type: string
+    type: object
+  controllers.ProfileResponse:
+    properties:
+      my_problems:
+        items:
+          $ref: '#/definitions/models.Problem'
+        type: array
+      solved_count:
+        type: integer
+      total_submissions:
+        type: integer
+      user:
+        $ref: '#/definitions/models.User'
+    type: object
+  controllers.SubmitRequest:
+    properties:
+      language:
+        type: string
+      problem_id:
+        type: integer
+      source_code:
+        type: string
+    type: object
+  models.Problem:
+    properties:
+      author_id:
+        type: integer
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      memory_limit:
+        type: integer
+      status:
+        description: '''draft'', ''pending_review'', ''approved'''
+        type: string
+      test_cases:
+        items:
+          $ref: '#/definitions/models.TestCase'
+        type: array
+      time_limit:
+        type: number
+      title:
+        type: string
+      visibility:
+        description: '''private'', ''link'', ''public'''
+        type: string
+    type: object
+  models.Submission:
+    properties:
+      created_at:
+        type: string
+      details:
+        items:
+          $ref: '#/definitions/models.SubmissionDetail'
+        type: array
+      execution_time:
+        type: string
+      id:
+        type: integer
+      language:
+        type: string
+      problem_id:
+        type: integer
+      source_code:
+        type: string
+      status:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  models.SubmissionDetail:
+    properties:
+      execution_time:
+        type: string
+      expected_preview:
+        type: string
+      id:
+        type: integer
+      input_preview:
+        type: string
+      is_sample:
+        type: boolean
+      output_preview:
+        type: string
+      status:
+        type: string
+      submission_id:
+        type: integer
+      test_case_id:
+        type: integer
+    type: object
+  models.TestCase:
+    properties:
+      expected_output:
+        type: string
+      id:
+        type: integer
+      input:
+        type: string
+      is_sample:
+        type: boolean
+      problem_id:
+        type: integer
+    type: object
+  models.User:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      role:
+        type: string
+      updated_at:
+        type: string
+    type: object
+host: localhost:8000
+info:
+  contact: {}
+  description: API for Online Judge Platform
+  title: Online Judge API
+  version: "1.0"
+paths:
+  /admin/problems:
+    get:
+      description: Get list of problems waiting for review
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Problem'
+            type: array
+      summary: Get pending problems
+      tags:
+      - Admin
+  /admin/problems/{id}/approve:
+    post:
+      description: Approve a problem and make it public
+      parameters:
+      - description: Problem ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Approve a problem
+      tags:
+      - Admin
+  /admin/problems/{id}/reject:
+    post:
+      description: Reject a problem and set it back to draft
+      parameters:
+      - description: Problem ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Reject a problem
+      tags:
+      - Admin
+  /auth/google/callback:
+    post:
+      consumes:
+      - application/json
+      description: Exchanges code for token and returns JWT
+      parameters:
+      - description: Auth Code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.GoogleCallbackRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Handle Google OAuth Callback
+      tags:
+      - Auth
+  /auth/google/url:
+    get:
+      description: Returns the URL to redirect the user for Google Login
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get Google OAuth URL
+      tags:
+      - Auth
+  /history:
+    get:
+      description: Get history for a problem
+      parameters:
+      - description: Problem ID
+        in: query
+        name: problem_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Submission'
+            type: array
+      summary: Get submission history
+      tags:
+      - Submissions
+  /problems:
+    get:
+      description: Retrieve a list of public problems
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Problem'
+            type: array
+      summary: Get all problems
+      tags:
+      - Problems
+    post:
+      consumes:
+      - application/json
+      description: Create a new coding problem (Draft)
+      parameters:
+      - description: Problem Data
+        in: body
+        name: problem
+        required: true
+        schema:
+          $ref: '#/definitions/models.Problem'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Problem'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new problem
+      tags:
+      - Problems
+  /problems/{id}:
+    delete:
+      description: Delete a problem by ID
+      parameters:
+      - description: Problem ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a problem
+      tags:
+      - Problems
+    get:
+      description: Retrieve a problem by ID
+      parameters:
+      - description: Problem ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Problem'
+      summary: Get a single problem
+      tags:
+      - Problems
+    put:
+      consumes:
+      - application/json
+      description: Update an existing problem
+      parameters:
+      - description: Problem ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Problem Data
+        in: body
+        name: problem
+        required: true
+        schema:
+          $ref: '#/definitions/models.Problem'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Problem'
+      summary: Update a problem
+      tags:
+      - Problems
+  /profile:
+    get:
+      description: Get current user profile with stats and problems
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.ProfileResponse'
+      summary: Get user profile
+      tags:
+      - User
+  /submission/{id}:
+    get:
+      description: Get details of a specific submission
+      parameters:
+      - description: Submission ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Submission'
+      summary: Get submission details
+      tags:
+      - Submissions
+  /submit:
+    post:
+      consumes:
+      - application/json
+      description: Submit code for a problem
+      parameters:
+      - description: Submission Data
+        in: body
+        name: submission
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.SubmitRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Submission'
+      summary: Submit a solution
+      tags:
+      - Submissions
+swagger: "2.0"

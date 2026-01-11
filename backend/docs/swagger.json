@@ -1,0 +1,639 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "API for Online Judge Platform",
+        "title": "Online Judge API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8000",
+    "basePath": "/api",
+    "paths": {
+        "/admin/problems": {
+            "get": {
+                "description": "Get list of problems waiting for review",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get pending problems",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Problem"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/problems/{id}/approve": {
+            "post": {
+                "description": "Approve a problem and make it public",
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Approve a problem",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Problem ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/problems/{id}/reject": {
+            "post": {
+                "description": "Reject a problem and set it back to draft",
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Reject a problem",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Problem ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/google/callback": {
+            "post": {
+                "description": "Exchanges code for token and returns JWT",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Handle Google OAuth Callback",
+                "parameters": [
+                    {
+                        "description": "Auth Code",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.GoogleCallbackRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.AuthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/google/url": {
+            "get": {
+                "description": "Returns the URL to redirect the user for Google Login",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Get Google OAuth URL",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/history": {
+            "get": {
+                "description": "Get history for a problem",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Submissions"
+                ],
+                "summary": "Get submission history",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Problem ID",
+                        "name": "problem_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Submission"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/problems": {
+            "get": {
+                "description": "Retrieve a list of public problems",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Problems"
+                ],
+                "summary": "Get all problems",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Problem"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new coding problem (Draft)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Problems"
+                ],
+                "summary": "Create a new problem",
+                "parameters": [
+                    {
+                        "description": "Problem Data",
+                        "name": "problem",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Problem"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Problem"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/problems/{id}": {
+            "get": {
+                "description": "Retrieve a problem by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Problems"
+                ],
+                "summary": "Get a single problem",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Problem ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Problem"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update an existing problem",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Problems"
+                ],
+                "summary": "Update a problem",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Problem ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Problem Data",
+                        "name": "problem",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Problem"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Problem"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a problem by ID",
+                "tags": [
+                    "Problems"
+                ],
+                "summary": "Delete a problem",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Problem ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/profile": {
+            "get": {
+                "description": "Get current user profile with stats and problems",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get user profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ProfileResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/submission/{id}": {
+            "get": {
+                "description": "Get details of a specific submission",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Submissions"
+                ],
+                "summary": "Get submission details",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Submission ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Submission"
+                        }
+                    }
+                }
+            }
+        },
+        "/submit": {
+            "post": {
+                "description": "Submit code for a problem",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Submissions"
+                ],
+                "summary": "Submit a solution",
+                "parameters": [
+                    {
+                        "description": "Submission Data",
+                        "name": "submission",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.SubmitRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Submission"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "controllers.AuthResponse": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/models.User"
+                }
+            }
+        },
+        "controllers.GoogleCallbackRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.ProfileResponse": {
+            "type": "object",
+            "properties": {
+                "my_problems": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Problem"
+                    }
+                },
+                "solved_count": {
+                    "type": "integer"
+                },
+                "total_submissions": {
+                    "type": "integer"
+                },
+                "user": {
+                    "$ref": "#/definitions/models.User"
+                }
+            }
+        },
+        "controllers.SubmitRequest": {
+            "type": "object",
+            "properties": {
+                "language": {
+                    "type": "string"
+                },
+                "problem_id": {
+                    "type": "integer"
+                },
+                "source_code": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Problem": {
+            "type": "object",
+            "properties": {
+                "author_id": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "memory_limit": {
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "'draft', 'pending_review', 'approved'",
+                    "type": "string"
+                },
+                "test_cases": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.TestCase"
+                    }
+                },
+                "time_limit": {
+                    "type": "number"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "visibility": {
+                    "description": "'private', 'link', 'public'",
+                    "type": "string"
+                }
+            }
+        },
+        "models.Submission": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SubmissionDetail"
+                    }
+                },
+                "execution_time": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "language": {
+                    "type": "string"
+                },
+                "problem_id": {
+                    "type": "integer"
+                },
+                "source_code": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.SubmissionDetail": {
+            "type": "object",
+            "properties": {
+                "execution_time": {
+                    "type": "string"
+                },
+                "expected_preview": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "input_preview": {
+                    "type": "string"
+                },
+                "is_sample": {
+                    "type": "boolean"
+                },
+                "output_preview": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "submission_id": {
+                    "type": "integer"
+                },
+                "test_case_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.TestCase": {
+            "type": "object",
+            "properties": {
+                "expected_output": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "input": {
+                    "type": "string"
+                },
+                "is_sample": {
+                    "type": "boolean"
+                },
+                "problem_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.User": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}
