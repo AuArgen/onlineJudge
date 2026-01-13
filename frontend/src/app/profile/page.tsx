@@ -1,105 +1,116 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function Profile() {
-  const [profile, setProfile] = useState<any>(null);
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [history, setHistory] = useState<any[]>([]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
-      window.location.href = '/auth/login';
+      router.push('/auth/login');
       return;
     }
 
+    // Fetch User Profile
     fetch('http://localhost:8000/api/profile', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-      .then(res => res.json())
-      .then(setProfile)
-      .catch(console.error);
-  }, []);
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch profile');
+        return res.json();
+      })
+      .then((data) => {
+        setUser(data);
+        // Save updated user data to localStorage
+        localStorage.setItem('user', JSON.stringify(data));
+      })
+      .catch((err) => {
+        console.error(err);
+        // If token is invalid, logout
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        router.push('/auth/login');
+      })
+      .finally(() => setLoading(false));
 
-  if (!profile) return <div>Loading...</div>;
+    // Fetch Submission History
+    fetch('http://localhost:8000/api/history', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then((res) => res.json())
+      .then(setHistory)
+      .catch(console.error);
+  }, [router]);
+
+  if (loading) return <div className="p-10 text-center">Загрузка профиля...</div>;
+  if (!user) return <div className="p-10 text-center">Пользователь не найден</div>;
 
   return (
-    <div className="max-w-7xl mx-auto py-10 px-4">
-      <div className="flex flex-col md:flex-row gap-8">
-        {/* User Info Card */}
-        <div className="md:w-1/3">
-          <div className="bg-white shadow rounded-lg p-6 text-center">
-            <div className="w-24 h-24 bg-blue-100 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl font-bold text-blue-600">
-              {profile.user.name.charAt(0)}
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900">{profile.user.name}</h2>
-            <p className="text-gray-500 mb-4">{profile.user.email}</p>
-            <span className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
-              {profile.user.role}
-            </span>
-
-            <div className="grid grid-cols-2 gap-4 mt-6">
-              <div className="bg-green-50 p-4 rounded border border-green-100">
-                <p className="text-2xl font-bold text-green-600">{profile.solved_count}</p>
-                <p className="text-xs text-gray-500 uppercase">Решено</p>
-              </div>
-              <div className="bg-gray-50 p-4 rounded border border-gray-100">
-                <p className="text-2xl font-bold text-gray-700">{profile.total_submissions}</p>
-                <p className="text-xs text-gray-500 uppercase">Попыток</p>
-              </div>
-            </div>
+    <div className="max-w-4xl mx-auto py-10 px-4">
+      <div className="bg-white shadow rounded-lg p-6 mb-8 flex flex-col sm:flex-row items-center gap-6">
+        <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-3xl font-bold flex-shrink-0">
+          {user.name ? user.name[0].toUpperCase() : '?'}
+        </div>
+        <div className="flex-grow text-center sm:text-left">
+          <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
+          <p className="text-gray-500">{user.email}</p>
+          <div className="mt-2 flex gap-4 text-sm justify-center sm:justify-start">
+            <span className="bg-green-100 text-green-800 px-2 py-1 rounded">Role: {user.role}</span>
           </div>
         </div>
+        <div className="flex-shrink-0">
+          <Link href="/problems?filter=my" className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm hover:shadow">
+            Мои задачи
+          </Link>
+        </div>
+      </div>
 
-        {/* My Problems */}
-        <div className="md:w-2/3">
-          <div className="bg-white shadow rounded-lg p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Мои задачи</h2>
-              <Link href="/problems/create" className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium">
-                + Создать
-              </Link>
-            </div>
-
-            {profile.my_problems && profile.my_problems.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Название</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действие</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {profile.my_problems.map((p: any) => (
-                      <tr key={p.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.id}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          <Link href={`/problems/${p.id}`} className="hover:text-blue-600">{p.title}</Link>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            p.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {p.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <Link href={`/problems/${p.id}/edit`} className="text-indigo-600 hover:text-indigo-900 mr-4">
-                            Изменить
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-4">Вы еще не создали ни одной задачи.</p>
-            )}
-          </div>
+      <div className="bg-white shadow rounded-lg p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">История решений</h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Задача</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Язык</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {history.map((sub: any) => (
+                <tr key={sub.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <a href={`/problems/${sub.problem_id}`} className="text-blue-600 hover:underline">
+                      Problem #{sub.problem_id}
+                    </a>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      sub.status === 'Accepted' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {sub.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{sub.language}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(sub.created_at).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+              {history.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">Нет решений</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

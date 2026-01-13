@@ -4,44 +4,50 @@ import (
 	"log"
 	"onlineJudge/backend/config"
 	"onlineJudge/backend/database"
-	_ "onlineJudge/backend/docs"
 	"onlineJudge/backend/routes"
-	"onlineJudge/backend/selftest" // Import selftest
+	"onlineJudge/backend/selftest"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/swagger"
+	_ "onlineJudge/backend/docs" // Import swagger docs
 )
 
 // @title Online Judge API
 // @version 1.0
-// @description API for Online Judge Platform
+// @description API for Online Judge System
 // @host localhost:8000
 // @BasePath /api
 func main() {
-	// 1. Load Config
+	// Load config
 	config.LoadConfig()
 
-	// 2. Connect Database
+	// Connect to database
 	database.Connect()
 
-	// 3. Run Self-Test in background
-	go selftest.Run()
+	// Seed database (if empty)
+	database.Seed()
 
-	// 4. Init App
+	// Initialize Fiber app
 	app := fiber.New()
 
-	// 5. Middleware
+	// Middleware
 	app.Use(logger.New())
-	app.Use(cors.New())
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*", // Allow all origins for development
+		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+	}))
 
-	// 6. Swagger Route
+	// Swagger
 	app.Get("/swagger/*", swagger.HandlerDefault)
 
-	// 7. Routes
+	// Setup Routes
 	routes.SetupRoutes(app)
 
-	// 8. Start Server
+	// Run Self-Test in background
+	go selftest.Run()
+
+	// Start server
 	log.Fatal(app.Listen(":" + config.AppPort))
 }

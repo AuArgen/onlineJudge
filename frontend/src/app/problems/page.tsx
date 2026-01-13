@@ -1,14 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
-export default function Problems() {
+// Force dynamic rendering to avoid build errors with useSearchParams
+export const dynamic = 'force-dynamic';
+
+function ProblemsContent() {
+  const searchParams = useSearchParams();
+  const initialFilter = searchParams.get('filter') || 'all';
+
   const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [filter, setFilter] = useState('all'); // all, my, public, private
+  const [filter, setFilter] = useState(initialFilter);
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -18,7 +25,13 @@ export default function Problems() {
     }
   }, []);
 
-  // Debounce search input
+  useEffect(() => {
+    const urlFilter = searchParams.get('filter');
+    if (urlFilter) {
+      setFilter(urlFilter);
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 500);
     return () => clearTimeout(timer);
@@ -40,7 +53,6 @@ export default function Problems() {
     fetch(url, { headers })
       .then((res) => {
         if (res.status === 401) {
-          // If unauthorized for a filter, fallback to all
           setFilter('all');
           return [];
         }
@@ -167,5 +179,13 @@ export default function Problems() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function Problems() {
+  return (
+    <Suspense fallback={<div className="p-10 text-center">Загрузка...</div>}>
+      <ProblemsContent />
+    </Suspense>
   );
 }

@@ -9,7 +9,7 @@ import (
 
 // GetPendingProblems godoc
 // @Summary Get pending problems
-// @Description Get list of problems waiting for review
+// @Description Get problems waiting for moderation
 // @Tags Admin
 // @Produce json
 // @Success 200 {array} models.Problem
@@ -21,13 +21,13 @@ func GetPendingProblems(c *fiber.Ctx) error {
 	}
 
 	var problems []models.Problem
-	database.DB.Where("status = ?", "pending_review").Find(&problems)
+	database.DB.Where("status = ?", "pending_review").Order("created_at asc").Find(&problems)
 	return c.JSON(problems)
 }
 
 // ApproveProblem godoc
 // @Summary Approve a problem
-// @Description Approve a problem and make it public
+// @Description Publish a problem
 // @Tags Admin
 // @Param id path int true "Problem ID"
 // @Success 200 {object} map[string]string
@@ -44,18 +44,20 @@ func ApproveProblem(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Problem not found"})
 	}
 
-	problem.Status = "approved"
+	problem.Status = "published"
 	problem.Visibility = "public"
+	problem.ModerationComment = "" // Clear any previous rejection comment
 	database.DB.Save(&problem)
 
-	return c.JSON(fiber.Map{"message": "Problem approved"})
+	return c.JSON(fiber.Map{"message": "Problem approved and published"})
 }
 
 // RejectProblem godoc
 // @Summary Reject a problem
-// @Description Reject a problem and set it back to draft
+// @Description Reject a problem with a comment
 // @Tags Admin
 // @Param id path int true "Problem ID"
+// @Param body body object true "Reason"
 // @Success 200 {object} map[string]string
 // @Router /admin/problems/{id}/reject [post]
 func RejectProblem(c *fiber.Ctx) error {
@@ -70,8 +72,17 @@ func RejectProblem(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Problem not found"})
 	}
 
-	problem.Status = "draft"
-	problem.Visibility = "private"
+	type RejectRequest struct {
+		Reason string `json:"reason"`
+	}
+	var req RejectRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
+	}
+
+	problem.Status = "rejected"
+	problem.Visibility = "private" // Ensure it's private
+	problem.ModerationComment = req.Reason
 	database.DB.Save(&problem)
 
 	return c.JSON(fiber.Map{"message": "Problem rejected"})

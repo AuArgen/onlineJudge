@@ -1,8 +1,13 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState, useRef, Suspense } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Editor from '@monaco-editor/react';
+import Link from 'next/link';
+import { useToast } from '@/components/ToastProvider';
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
 
 // Modal for Submission Details
 function SubmissionDetailsModal({ submission, onClose }: { submission: any, onClose: () => void }) {
@@ -123,8 +128,12 @@ function SubmissionDetailsModal({ submission, onClose }: { submission: any, onCl
   );
 }
 
-export default function ProblemDetail() {
+function ProblemDetailContent() {
   const { id } = useParams();
+  const searchParams = useSearchParams();
+  const contestId = searchParams.get('contest_id');
+  const { showToast } = useToast();
+  
   const [problem, setProblem] = useState<any>(null);
   const [code, setCode] = useState('// Write your code here');
   const [language, setLanguage] = useState('python');
@@ -133,6 +142,14 @@ export default function ProblemDetail() {
   const [history, setHistory] = useState<any[]>([]);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [cooldown, setCooldown] = useState(0);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+  }, []);
 
   useEffect(() => {
     const savedCode = localStorage.getItem(`code_problem_${id}`);
@@ -193,23 +210,36 @@ export default function ProblemDetail() {
         },
         body: JSON.stringify({
           problem_id: Number(id),
+          contest_id: contestId ? Number(contestId) : undefined,
           language,
           source_code: code
         })
       });
       const data = await res.json();
       setResult(data);
-      fetchHistory();
-      setCooldown(3);
+      
+      if (res.ok) {
+        if (data.status === 'Accepted') {
+          showToast('Решение принято!', 'success');
+        } else {
+          showToast(`Ошибка: ${data.status}`, 'error');
+        }
+        fetchHistory();
+        setCooldown(3);
+      } else {
+        showToast(data.error || 'Ошибка при отправке', 'error');
+      }
     } catch (error) {
       console.error(error);
-      alert('Error submitting solution');
+      showToast('Ошибка сети', 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
   if (!problem) return <div className="p-10 text-center">Loading...</div>;
+
+  const isAuthor = user && (user.id === problem.author_id || user.role === 'admin');
 
   return (
     <div className="max-w-7xl mx-auto py-6 px-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -222,9 +252,35 @@ export default function ProblemDetail() {
 
       {/* Left Column: Problem & History */}
       <div className="flex flex-col gap-6">
+        {/* Breadcrumb / Header */}
+        <div className="flex justify-between items-center">
+          {contestId ? (
+            <Link href={`/contests/${contestId}`} className="text-sm text-blue-600 hover:underline flex items-center">
+              ← Назад к соревнованию
+            </Link>
+          ) : (
+            <Link href="/problems" className="text-sm text-blue-600 hover:underline flex items-center">
+              ← Все задачи
+            </Link>
+          )}
+        </div>
+
         {/* Problem Description */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h1 className="text-2xl font-bold mb-4 text-gray-900">{problem.title}</h1>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 relative">
+          <div className="flex justify-between items-start mb-4">
+            <h1 className="text-2xl font-bold text-gray-900">{problem.title}</h1>
+            {isAuthor && (
+              <Link 
+                href={`/problems/${id}/edit`}
+                className="text-gray-400 hover:text-blue-600 transition p-1 rounded hover:bg-blue-50"
+                title="Редактировать задачу"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </Link>
+            )}
+          </div>
           
           <div className="flex gap-3 mb-6 text-xs font-medium text-gray-600">
             <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md border border-blue-100">Time: {problem.time_limit}s</span>
@@ -386,5 +442,13 @@ export default function ProblemDetail() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ProblemDetail() {
+  return (
+    <Suspense fallback={<div className="p-10 text-center">Загрузка...</div>}>
+      <ProblemDetailContent />
+    </Suspense>
   );
 }

@@ -3,14 +3,18 @@ package models
 import "time"
 
 type Problem struct {
-	ID               uint      `gorm:"primaryKey" json:"id"`
-	Title            string    `json:"title"`
-	Description      string    `json:"description"`
-	TimeLimit        float64   `json:"time_limit"`
-	MemoryLimit      int       `json:"memory_limit"`
-	AuthorID         uint      `json:"author_id"`
-	Visibility       string    `gorm:"default:private" json:"visibility"`
-	Status           string    `gorm:"default:draft" json:"status"`
+	ID          uint    `gorm:"primaryKey" json:"id"`
+	Title       string  `json:"title"`
+	Description string  `json:"description"`
+	TimeLimit   float64 `json:"time_limit"`
+	MemoryLimit int     `json:"memory_limit"`
+	AuthorID    uint    `json:"author_id"`
+	Visibility  string  `gorm:"default:private" json:"visibility"` // private, public
+
+	// Status: draft, pending_review, published, rejected
+	Status            string `gorm:"default:draft" json:"status"`
+	ModerationComment string `json:"moderation_comment"` // Reason for rejection
+
 	AuthorSourceCode string    `json:"author_source_code"`
 	AuthorLanguage   string    `json:"author_language"`
 	CreatedAt        time.Time `json:"created_at"`

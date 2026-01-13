@@ -17,7 +17,12 @@ func SetupRoutes(app *fiber.App) {
 	// Problems (Public)
 	api.Get("/problems", controllers.GetProblems)
 	api.Get("/problems/:id", controllers.GetProblem)
-	api.Get("/leaderboard", controllers.GetLeaderboard) // New
+	api.Get("/leaderboard", controllers.GetLeaderboard)
+
+	// Contests (Public)
+	api.Get("/contests", controllers.GetContests)
+	api.Get("/contests/:id", controllers.GetContest)
+	api.Get("/contests/:id/leaderboard", controllers.GetContestLeaderboard)
 
 	// Protected Routes
 	api.Use(middleware.AuthRequired)
@@ -34,6 +39,11 @@ func SetupRoutes(app *fiber.App) {
 	api.Get("/history", controllers.GetHistory)
 	api.Get("/submission/:id", controllers.GetSubmission)
 	api.Get("/profile", controllers.GetProfile)
+
+	// Contest Management
+	api.Post("/contests", controllers.CreateContest)
+	api.Post("/contests/:id/problems", controllers.AddProblemToContest)
+	api.Post("/contests/:id/join", controllers.JoinContest)
 
 	// Admin Routes
 	admin := api.Group("/admin")

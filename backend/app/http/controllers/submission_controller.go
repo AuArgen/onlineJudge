@@ -6,12 +6,14 @@ import (
 	"onlineJudge/backend/database"
 	"onlineJudge/backend/services/compiler"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type SubmitRequest struct {
 	ProblemID  uint   `json:"problem_id"`
+	ContestID  *uint  `json:"contest_id,omitempty"` // Optional
 	Language   string `json:"language"`
 	SourceCode string `json:"source_code"`
 }
@@ -39,17 +41,53 @@ func SubmitSolution(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Problem not found"})
 	}
 
-	// 2. Create Submission Record
+	// 2. Contest Validation (If submitting to a contest)
+	if req.ContestID != nil && *req.ContestID > 0 {
+		var contest models.Contest
+		if err := database.DB.First(&contest, *req.ContestID).Error; err != nil {
+			return c.Status(404).JSON(fiber.Map{"error": "Contest not found"})
+		}
+
+		// Check Time
+		now := time.Now()
+		if now.Before(contest.StartTime) {
+			return c.Status(403).JSON(fiber.Map{"error": "Contest has not started yet"})
+		}
+		if now.After(contest.EndTime) {
+			return c.Status(403).JSON(fiber.Map{"error": "Contest has ended"})
+		}
+
+		// Check Participation
+		var count int64
+		database.DB.Model(&models.ContestParticipant{}).
+			Where("contest_id = ? AND user_id = ?", contest.ID, userID).
+			Count(&count)
+		if count == 0 {
+			return c.Status(403).JSON(fiber.Map{"error": "You are not registered for this contest"})
+		}
+
+		// Check if problem belongs to contest
+		var problemCount int64
+		database.DB.Model(&models.ContestProblem{}).
+			Where("contest_id = ? AND problem_id = ?", contest.ID, problem.ID).
+			Count(&problemCount)
+		if problemCount == 0 {
+			return c.Status(400).JSON(fiber.Map{"error": "Problem does not belong to this contest"})
+		}
+	}
+
+	// 3. Create Submission Record
 	submission := models.Submission{
 		UserID:     uint(userID),
 		ProblemID:  req.ProblemID,
+		ContestID:  req.ContestID,
 		Language:   req.Language,
 		SourceCode: req.SourceCode,
 		Status:     "Pending",
 	}
 	database.DB.Create(&submission)
 
-	// 3. Run Tests (Sync for simplicity)
+	// 4. Run Tests (Sync for simplicity)
 	langID := 0
 	switch req.Language {
 	case "python":
@@ -102,7 +140,6 @@ func SubmitSolution(c *fiber.Ctx) error {
 		})
 
 		// Update total time (take the max or sum, usually max for parallel, sum for serial)
-		// Here we just take the last one or the max
 		totalTime = result.ExecutionTime
 
 		if status != "Accepted" {

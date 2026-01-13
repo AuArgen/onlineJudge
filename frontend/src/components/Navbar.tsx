@@ -53,6 +53,16 @@ export default function Navbar() {
                 Задачи
               </Link>
               <Link 
+                href="/contests" 
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isActive('/contests') 
+                    ? 'bg-blue-50 text-blue-700' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                Соревнования
+              </Link>
+              <Link 
                 href="/leaderboard" 
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActive('/leaderboard') 
@@ -75,6 +85,18 @@ export default function Navbar() {
                 </div>
                 
                 <div className="flex items-center gap-2">
+                  <Link 
+                    href="/dashboard" 
+                    className={`p-2 rounded-full transition-colors ${
+                      isActive('/dashboard') ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+                    }`}
+                    title="Панель управления"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                  </Link>
+
                   <Link 
                     href="/profile" 
                     className={`p-2 rounded-full transition-colors ${
