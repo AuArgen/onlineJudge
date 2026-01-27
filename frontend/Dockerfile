@@ -16,6 +16,10 @@ RUN npm config set fetch-retry-maxtimeout 600000 \
 # Copy the source code
 COPY . .
 
+# Accept build argument
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 # Build Next.js app
 # We rely on docker-compose shm_size: '2gb' to avoid Bus Error
 RUN npm run build
