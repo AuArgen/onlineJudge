@@ -30,7 +30,7 @@ services:
     ports:
       - "${FRONTEND_PORT}:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:${APP_PORT}/api
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     # Increase shared memory size to avoid SIGBUS/SIGKILL during build
     shm_size: '2gb'
     depends_on:
