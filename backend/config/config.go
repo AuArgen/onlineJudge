@@ -7,8 +7,9 @@ import (
 )
 
 var (
-	AppPort string
-	DBUrl   string
+	AppPort        string
+	DBUrl          string
+	AllowedOrigins string
 )
 
 func LoadConfig() {
@@ -20,4 +21,9 @@ func LoadConfig() {
 	}
 
 	DBUrl = os.Getenv("DATABASE_URL")
+
+	AllowedOrigins = os.Getenv("ALLOWED_ORIGINS")
+	if AllowedOrigins == "" {
+		AllowedOrigins = "*" // Default for dev
+	}
 }

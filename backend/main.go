@@ -35,7 +35,7 @@ func main() {
 	// Middleware
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*", // Allow all origins for development
+		AllowOrigins: config.AllowedOrigins,
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
 

@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_PORT=8000
+      - DATABASE_URL=host=db user=${DB_USER} password=${DB_PASSWORD} dbname=${DB_NAME} port=5432 sslmode=disable
+      
+      # Google OAuth
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      # Redirect URI must match what you set in Google Cloud Console
+      # It should point to your BACKEND domain
+      - GOOGLE_REDIRECT_URI=https://my-backend.com/api/auth/google/callback 
+      
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      
+      # CORS: Allow requests from your FRONTEND domain
+      - ALLOWED_ORIGINS=https://my-frontend.com
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - db
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      # Frontend needs to know where the Backend API is
+      - NEXT_PUBLIC_API_URL=https://my-backend.com/api
+    depends_on:
+      - backend
+    restart: always
+
+  db:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  postgres_data:
