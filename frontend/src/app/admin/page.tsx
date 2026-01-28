@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { API_URL } from '@/lib/api';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -24,7 +25,7 @@ export default function AdminDashboard() {
       return;
     }
 
-    fetch('http://localhost:8000/api/admin/problems', {
+    fetch(`${API_URL}/admin/problems`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then((res) => res.json())

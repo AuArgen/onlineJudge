@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 function Countdown({ targetDate }: { targetDate: Date }) {
   const [timeLeft, setTimeLeft] = useState('');
@@ -42,7 +43,7 @@ export default function ContestDetail() {
   const fetchContestData = () => {
     const userData = localStorage.getItem('user');
     
-    fetch(`http://localhost:8000/api/contests/${id}`)
+    fetch(`${API_URL}/contests/${id}`)
       .then((res) => res.json())
       .then((data) => {
         setContest(data);
@@ -56,7 +57,7 @@ export default function ContestDetail() {
       .finally(() => setLoading(false));
 
     // Fetch Leaderboard
-    fetch(`http://localhost:8000/api/contests/${id}/leaderboard`)
+    fetch(`${API_URL}/contests/${id}/leaderboard`)
       .then(res => res.json())
       .then(setLeaderboard)
       .catch(console.error);
@@ -77,7 +78,7 @@ export default function ContestDetail() {
     }
 
     try {
-      const res = await fetch(`http://localhost:8000/api/contests/${id}/join`, {
+      const res = await fetch(`${API_URL}/contests/${id}/join`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { API_URL } from '@/lib/api';
 
 export default function EditContest() {
   const { id } = useParams();
@@ -9,7 +10,7 @@ export default function EditContest() {
   const [problemId, setProblemId] = useState('');
 
   useEffect(() => {
-    fetch(`http://localhost:8000/api/contests/${id}`)
+    fetch(`${API_URL}/contests/${id}`)
       .then((res) => res.json())
       .then(setContest)
       .catch(console.error);
@@ -17,7 +18,7 @@ export default function EditContest() {
 
   const handleAddProblem = async () => {
     const token = localStorage.getItem('token');
-    await fetch(`http://localhost:8000/api/contests/${id}/problems`, {
+    await fetch(`${API_URL}/contests/${id}/problems`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -26,7 +27,7 @@ export default function EditContest() {
       body: JSON.stringify({ problem_id: parseInt(problemId) })
     });
     // Refresh contest data
-    fetch(`http://localhost:8000/api/contests/${id}`).then(res => res.json()).then(setContest);
+    fetch(`${API_URL}/contests/${id}`).then(res => res.json()).then(setContest);
     setProblemId('');
   };
 

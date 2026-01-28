@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_URL } from '@/lib/api';
 
 export default function CreateContest() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function CreateContest() {
     const token = localStorage.getItem('token');
     
     try {
-      const res = await fetch('http://localhost:8000/api/contests', {
+      const res = await fetch(`${API_URL}/contests`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

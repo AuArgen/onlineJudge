@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 export default function Profile() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function Profile() {
     }
 
     // Fetch User Profile
-    fetch('http://localhost:8000/api/profile', {
+    fetch(`${API_URL}/profile`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then((res) => {
@@ -40,7 +41,7 @@ export default function Profile() {
       .finally(() => setLoading(false));
 
     // Fetch Submission History
-    fetch('http://localhost:8000/api/history', {
+    fetch(`${API_URL}/history`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then((res) => res.json())

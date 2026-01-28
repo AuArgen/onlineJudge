@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Editor from '@monaco-editor/react';
+import { API_URL } from '@/lib/api';
 
 export default function EditProblem() {
   const router = useRouter();
@@ -30,7 +31,7 @@ export default function EditProblem() {
       return;
     }
 
-    fetch(`http://localhost:8000/api/problems/${id}`, {
+    fetch(`${API_URL}/problems/${id}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then((res) => {
@@ -60,7 +61,7 @@ export default function EditProblem() {
     const token = localStorage.getItem('token');
     
     try {
-      const res = await fetch(`http://localhost:8000/api/problems/${id}`, {
+      const res = await fetch(`${API_URL}/problems/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -87,7 +88,7 @@ export default function EditProblem() {
     if (!confirm('Вы уверены?')) return;
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:8000/api/problems/${id}`, {
+      const res = await fetch(`${API_URL}/problems/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -107,7 +108,7 @@ export default function EditProblem() {
     const token = localStorage.getItem('token');
 
     try {
-      const res = await fetch(`http://localhost:8000/api/problems/${id}/testcases`, {
+      const res = await fetch(`${API_URL}/problems/${id}/testcases`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -136,7 +137,7 @@ export default function EditProblem() {
     if (!confirm('Удалить тест?')) return;
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:8000/api/problems/${id}/testcases/${testId}`, {
+      const res = await fetch(`${API_URL}/problems/${id}/testcases/${testId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

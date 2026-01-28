@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { API_URL } from '@/lib/api';
 
 // Force dynamic rendering to avoid build errors with useSearchParams
 export const dynamic = 'force-dynamic';
@@ -44,7 +45,7 @@ function ProblemsContent() {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    let url = `http://localhost:8000/api/problems?filter=${filter}`;
+    let url = `${API_URL}/problems?filter=${filter}`;
     if (debouncedSearch) {
       url += `&search=${encodeURIComponent(debouncedSearch)}`;
     }

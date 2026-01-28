@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { API_URL } from '@/lib/api';
 
 export default function Login() {
   const [url, setUrl] = useState('');
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/auth/google/url')
+    fetch(`${API_URL}/auth/google/url`)
       .then((res) => res.json())
       .then((data) => setUrl(data.url));
   }, []);

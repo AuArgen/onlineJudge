@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { API_URL } from '@/lib/api';
 
 export default function Leaderboard() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/leaderboard')
+    fetch(`${API_URL}/leaderboard`)
       .then((res) => res.json())
       .then(setUsers)
       .catch(console.error)

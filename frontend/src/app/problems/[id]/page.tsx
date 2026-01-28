@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Editor from '@monaco-editor/react';
 import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
+import { API_URL } from '@/lib/api';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -22,7 +23,7 @@ function SubmissionDetailsModal({ submission, onClose }: { submission: any, onCl
     }
 
     const token = localStorage.getItem('token');
-    fetch(`http://localhost:8000/api/submission/${submission.id}`, {
+    fetch(`${API_URL}/submission/${submission.id}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -168,7 +169,7 @@ function ProblemDetailContent() {
   }, [code, language, id]);
 
   useEffect(() => {
-    fetch(`http://localhost:8000/api/problems/${id}`)
+    fetch(`${API_URL}/problems/${id}`)
       .then((res) => res.json())
       .then(setProblem)
       .catch(console.error);
@@ -187,7 +188,7 @@ function ProblemDetailContent() {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    fetch(`http://localhost:8000/api/history?problem_id=${id}`, {
+    fetch(`${API_URL}/history?problem_id=${id}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -208,7 +209,7 @@ function ProblemDetailContent() {
     const token = localStorage.getItem('token');
     
     try {
-      const res = await fetch('http://localhost:8000/api/submit', {
+      const res = await fetch(`${API_URL}/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

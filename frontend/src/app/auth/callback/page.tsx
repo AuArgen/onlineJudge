@@ -2,6 +2,7 @@
 
 import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { API_URL } from '@/lib/api';
 
 function CallbackContent() {
   const router = useRouter();
@@ -10,7 +11,7 @@ function CallbackContent() {
 
   useEffect(() => {
     if (code) {
-      fetch('http://localhost:8000/api/auth/google/callback', {
+      fetch(`${API_URL}/auth/google/callback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code }),

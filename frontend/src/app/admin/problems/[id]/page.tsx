@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { API_URL } from '@/lib/api';
 
 export default function ReviewProblem() {
   const { id } = useParams();
@@ -17,7 +18,7 @@ export default function ReviewProblem() {
       return;
     }
 
-    fetch(`http://localhost:8000/api/problems/${id}`, {
+    fetch(`${API_URL}/problems/${id}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then((res) => res.json())
@@ -29,7 +30,7 @@ export default function ReviewProblem() {
   const handleApprove = async () => {
     if (!confirm('Опубликовать эту задачу?')) return;
     const token = localStorage.getItem('token');
-    await fetch(`http://localhost:8000/api/admin/problems/${id}/approve`, {
+    await fetch(`${API_URL}/admin/problems/${id}/approve`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -43,7 +44,7 @@ export default function ReviewProblem() {
     }
     if (!confirm('Отклонить эту задачу?')) return;
     const token = localStorage.getItem('token');
-    await fetch(`http://localhost:8000/api/admin/problems/${id}/reject`, {
+    await fetch(`${API_URL}/admin/problems/${id}/reject`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify({ reason })

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { API_URL } from '@/lib/api';
 
 function HistoryContent() {
   const searchParams = useSearchParams();
@@ -13,7 +14,7 @@ function HistoryContent() {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    let url = 'http://localhost:8000/api/history';
+    let url = `${API_URL}/history`;
     if (problemId) {
       url += `?problem_id=${problemId}`;
     }
@@ -28,7 +29,7 @@ function HistoryContent() {
 
   const viewDetails = (id: number) => {
     const token = localStorage.getItem('token');
-    fetch(`http://localhost:8000/api/submission/${id}`, {
+    fetch(`${API_URL}/submission/${id}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())

@@ -1,10 +1,9 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 // Helper to determine the correct API URL based on environment (Server vs Client)
-function getBaseUrl() {
+export function getBaseUrl() {
   if (typeof window === 'undefined') {
     // Server-side (Docker internal network)
-    // Use the service name 'backend' defined in docker-compose
     return 'http://backend:8000/api';
   }
   // Client-side (Browser)

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { API_URL } from '@/lib/api';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -22,18 +23,15 @@ export default function Dashboard() {
     setUser(JSON.parse(userData));
 
     // Fetch My Problems
-    fetch('http://localhost:8000/api/problems?filter=my', {
+    fetch(`${API_URL}/problems?filter=my`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then((res) => res.json())
       .then(setProblems)
       .catch(console.error);
 
-    // Fetch My Contests (We need an endpoint for this, or filter on client side if API returns all)
-    // Currently GET /api/contests returns only public ones. We might need GET /api/contests?filter=my
-    // For now, let's assume we fetch all and filter (not ideal for production) or add filter to backend.
-    // Let's try fetching all and filtering by author_id on client for MVP.
-    fetch('http://localhost:8000/api/contests', {
+    // Fetch My Contests
+    fetch(`${API_URL}/contests`, {
        headers: { 'Authorization': `Bearer ${token}` }
     })
       .then((res) => res.json())
@@ -51,7 +49,7 @@ export default function Dashboard() {
 
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:8000/api/problems/${problemId}`, {
+      const res = await fetch(`${API_URL}/problems/${problemId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
