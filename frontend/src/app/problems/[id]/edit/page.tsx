@@ -18,11 +18,13 @@ export default function EditProblem() {
     status: 'draft',
     moderation_comment: '',
     author_source_code: '// Write correct solution here to generate outputs',
-    author_language: 'python'
+    author_language: 'python',
+    share_token: ''
   });
   const [testCases, setTestCases] = useState<any[]>([]);
   const [newTest, setNewTest] = useState({ input: '', is_sample: false });
   const [addingTest, setAddingTest] = useState(false);
+  const [shareEmail, setShareEmail] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -48,7 +50,8 @@ export default function EditProblem() {
           status: data.status,
           moderation_comment: data.moderation_comment || '',
           author_source_code: data.author_source_code || '// Write correct solution here to generate outputs',
-          author_language: data.author_language || 'python'
+          author_language: data.author_language || 'python',
+          share_token: data.share_token || ''
         });
         setTestCases(data.test_cases || []);
       })
@@ -72,7 +75,6 @@ export default function EditProblem() {
       
       if (res.ok) {
         alert('Задача обновлена!');
-        // If sent to moderation, maybe redirect or show message
         if (formData.status === 'pending_review') {
           alert('Задача отправлена на модерацию. Ожидайте решения администратора.');
         }
@@ -144,6 +146,43 @@ export default function EditProblem() {
       
       if (res.ok) {
         setTestCases(testCases.filter(t => t.id !== testId));
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!shareEmail) return;
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_URL}/problems/${id}/share`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ email: shareEmail })
+      });
+      if (res.ok) {
+        alert('Доступ предоставлен!');
+        setShareEmail('');
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Ошибка');
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleGenerateLink = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_URL}/problems/${id}/share-token`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFormData({ ...formData, share_token: data.token });
       }
     } catch (error) {
       console.error(error);
@@ -242,6 +281,48 @@ export default function EditProblem() {
               {formData.status === 'pending_review' ? 'Сохранить и отправить на модерацию' : 'Сохранить изменения'}
             </button>
           </form>
+
+          {/* Sharing */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Поделиться задачей</h3>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">По Email</label>
+              <div className="flex gap-2">
+                <input 
+                  type="email" 
+                  placeholder="user@example.com" 
+                  className="flex-grow border rounded p-2 text-sm"
+                  value={shareEmail}
+                  onChange={(e) => setShareEmail(e.target.value)}
+                />
+                <button onClick={handleShare} className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700">
+                  Добавить
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Доступ по ссылке</label>
+              {formData.share_token ? (
+                <div className="flex gap-2 items-center bg-gray-50 p-2 rounded border">
+                  <code className="text-xs flex-grow truncate">
+                    {`${window.location.origin}/problems/${id}?token=${formData.share_token}`}
+                  </code>
+                  <button 
+                    onClick={() => navigator.clipboard.writeText(`${window.location.origin}/problems/${id}?token=${formData.share_token}`)}
+                    className="text-blue-600 text-xs font-medium hover:underline"
+                  >
+                    Копировать
+                  </button>
+                </div>
+              ) : (
+                <button onClick={handleGenerateLink} className="text-blue-600 text-sm hover:underline">
+                  Сгенерировать ссылку
+                </button>
+              )}
+            </div>
+          </div>
 
           {/* Author Solution Editor */}
           <div className="bg-white shadow rounded-lg p-6">

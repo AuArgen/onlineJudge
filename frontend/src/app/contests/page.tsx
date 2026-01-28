@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 export default function Contests() {
   const [contests, setContests] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/contests')
+    fetch(`${API_URL}/contests`)
       .then((res) => res.json())
       .then(setContests)
       .catch(console.error)

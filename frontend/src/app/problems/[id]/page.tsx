@@ -259,23 +259,19 @@ function ProblemDetailContent() {
 
       {/* Left Column: Problem & History */}
       <div className="flex flex-col gap-6">
-        {/* Breadcrumb / Header */}
-        <div className="flex justify-between items-center">
-          {contestId ? (
-            <Link href={`/contests/${contestId}`} className="text-sm text-blue-600 hover:underline flex items-center">
-              ← Назад к соревнованию
-            </Link>
-          ) : (
-            <Link href="/problems" className="text-sm text-blue-600 hover:underline flex items-center">
-              ← Все задачи
-            </Link>
-          )}
-        </div>
-
         {/* Problem Description */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 relative">
-          <div className="flex justify-between items-start mb-4">
-            <h1 className="text-2xl font-bold text-gray-900">{problem.title}</h1>
+          {/* Breadcrumb / Header */}
+          <div className="flex justify-between items-center mb-6">
+            {contestId ? (
+              <Link href={`/contests/${contestId}`} className="text-sm text-blue-600 hover:underline flex items-center">
+                ← Назад к соревнованию
+              </Link>
+            ) : (
+              <Link href="/problems" className="text-sm text-blue-600 hover:underline flex items-center">
+                ← Все задачи
+              </Link>
+            )}
             {isAuthor && (
               <Link 
                 href={`/problems/${id}/edit`}
@@ -288,6 +284,8 @@ function ProblemDetailContent() {
               </Link>
             )}
           </div>
+          
+          <h1 className="text-2xl font-bold mb-4 text-gray-900">{problem.title}</h1>
           
           <div className="flex gap-3 mb-6 text-xs font-medium text-gray-600">
             <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md border border-blue-100">Time: {problem.time_limit}s</span>

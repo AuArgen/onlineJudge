@@ -103,6 +103,11 @@ func GoogleCallback(c *fiber.Ctx) error {
 		database.DB.Create(&user)
 	}
 
+	// Update Problem Access (Link pending shares to this user ID)
+	database.DB.Model(&models.ProblemAccess{}).
+		Where("email = ? AND user_id IS NULL", user.Email).
+		Update("user_id", user.ID)
+
 	claims := jwt.MapClaims{
 		"user_id": user.ID,
 		"role":    user.Role,

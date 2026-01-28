@@ -14,7 +14,7 @@ import (
 var DB *gorm.DB
 
 func Connect() {
-	dsn := config.DBUrl // Fixed variable name
+	dsn := config.DBUrl
 	var err error
 
 	// Retry logic for database connection
@@ -45,6 +45,7 @@ func Connect() {
 		&models.Contest{},
 		&models.ContestProblem{},
 		&models.ContestParticipant{},
+		&models.ProblemAccess{}, // New model
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database: ", err)

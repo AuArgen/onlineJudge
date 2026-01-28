@@ -15,13 +15,25 @@ type Problem struct {
 	Status            string `gorm:"default:draft" json:"status"`
 	ModerationComment string `json:"moderation_comment"` // Reason for rejection
 
-	AuthorSourceCode string    `json:"author_source_code"`
-	AuthorLanguage   string    `json:"author_language"`
-	CreatedAt        time.Time `json:"created_at"`
+	AuthorSourceCode string `json:"author_source_code"`
+	AuthorLanguage   string `json:"author_language"`
 
-	TestCases   []TestCase   `gorm:"foreignKey:ProblemID;constraint:OnDelete:CASCADE" json:"test_cases,omitempty"`
-	Submissions []Submission `gorm:"foreignKey:ProblemID;constraint:OnDelete:CASCADE" json:"-"`
+	// Sharing
+	ShareToken string `json:"share_token"` // Unique token for link sharing
+
+	CreatedAt time.Time `json:"created_at"`
+
+	TestCases   []TestCase      `gorm:"foreignKey:ProblemID;constraint:OnDelete:CASCADE" json:"test_cases,omitempty"`
+	Submissions []Submission    `gorm:"foreignKey:ProblemID;constraint:OnDelete:CASCADE" json:"-"`
+	AccessList  []ProblemAccess `gorm:"foreignKey:ProblemID;constraint:OnDelete:CASCADE" json:"access_list,omitempty"`
 
 	// Virtual field for statistics
 	SolvedCount int64 `gorm:"-" json:"solved_count"`
+}
+
+type ProblemAccess struct {
+	ID        uint   `gorm:"primaryKey" json:"id"`
+	ProblemID uint   `json:"problem_id"`
+	UserID    *uint  `json:"user_id"` // Nullable if invited by email but not registered yet
+	Email     string `json:"email"`
 }

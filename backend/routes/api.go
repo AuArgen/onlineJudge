@@ -35,6 +35,10 @@ func SetupRoutes(app *fiber.App) {
 	api.Delete("/problems/:id/testcases/:testcase_id", controllers.DeleteTestCase)
 	api.Post("/problems/generate-output", controllers.GenerateOutput)
 
+	// Sharing
+	api.Post("/problems/:id/share", controllers.ShareProblem)
+	api.Post("/problems/:id/share-token", controllers.GenerateShareToken)
+
 	api.Post("/submit", controllers.SubmitSolution)
 	api.Get("/history", controllers.GetHistory)
 	api.Get("/submission/:id", controllers.GetSubmission)

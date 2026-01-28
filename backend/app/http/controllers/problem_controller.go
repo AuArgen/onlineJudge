@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"onlineJudge/backend/app/models"
 	"onlineJudge/backend/database"
 	"onlineJudge/backend/services/compiler"
@@ -49,8 +51,8 @@ func GetProblems(c *fiber.Ctx) error {
 	if role == "admin" {
 		// Admin sees everything
 	} else if userID > 0 {
-		// User sees public + own problems
-		query = query.Where("visibility = 'public' OR author_id = ?", userID)
+		// User sees public + own problems + shared with them
+		query = query.Where("visibility = 'public' OR author_id = ? OR id IN (SELECT problem_id FROM problem_accesses WHERE user_id = ?)", userID, userID)
 	} else {
 		// Guest sees only public
 		query = query.Where("visibility = 'public'")
@@ -82,14 +84,12 @@ func GetProblems(c *fiber.Ctx) error {
 
 	query.Order("created_at desc").Find(&problems)
 
-	// Calculate SolvedCount for each problem
-	// Optimization: This N+1 query is slow for many problems.
-	// Better approach: Use a subquery or join, but for now loop is simple.
+	// Calculate SolvedCount
 	for i := range problems {
 		var count int64
 		database.DB.Model(&models.Submission{}).
 			Where("problem_id = ? AND status = 'Accepted'", problems[i].ID).
-			Distinct("user_id"). // Count unique users who solved it
+			Distinct("user_id").
 			Count(&count)
 		problems[i].SolvedCount = count
 	}
@@ -103,17 +103,41 @@ func GetProblems(c *fiber.Ctx) error {
 // @Tags Problems
 // @Produce json
 // @Param id path int true "Problem ID"
+// @Param token query string false "Share Token"
 // @Success 200 {object} models.Problem
 // @Router /problems/{id} [get]
 func GetProblem(c *fiber.Ctx) error {
 	id := c.Params("id")
+	shareToken := c.Query("token")
 	userID, role := getUserIDFromToken(c)
 
 	var problem models.Problem
 
-	// First get the problem to check author
-	if err := database.DB.First(&problem, id).Error; err != nil {
+	if err := database.DB.Preload("AccessList").First(&problem, id).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Problem not found"})
+	}
+
+	// Access Control
+	hasAccess := false
+	if problem.Visibility == "public" {
+		hasAccess = true
+	} else if problem.AuthorID == uint(userID) || role == "admin" {
+		hasAccess = true
+	} else if shareToken != "" && problem.ShareToken == shareToken {
+		hasAccess = true
+	} else if userID > 0 {
+		// Check AccessList
+		var count int64
+		database.DB.Model(&models.ProblemAccess{}).
+			Where("problem_id = ? AND user_id = ?", problem.ID, userID).
+			Count(&count)
+		if count > 0 {
+			hasAccess = true
+		}
+	}
+
+	if !hasAccess {
+		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
 	}
 
 	// If user is author or admin, load ALL test cases
@@ -397,4 +421,93 @@ func GenerateOutput(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"output": result.Stdout})
+}
+
+// ShareProblem godoc
+// @Summary Share problem with user
+// @Description Grant access to a private problem via email
+// @Tags Problems
+// @Param id path int true "Problem ID"
+// @Param body body object true "Email"
+// @Success 200 {object} map[string]string
+// @Router /problems/{id}/share [post]
+func ShareProblem(c *fiber.Ctx) error {
+	problemID := c.Params("id")
+	userID := c.Locals("user_id").(float64)
+
+	var problem models.Problem
+	if err := database.DB.First(&problem, problemID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Problem not found"})
+	}
+
+	if problem.AuthorID != uint(userID) {
+		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
+	}
+
+	type ShareRequest struct {
+		Email string `json:"email"`
+	}
+	var req ShareRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
+	}
+
+	// Find user by email (if exists)
+	var user models.User
+	var targetUserID *uint
+	if err := database.DB.Where("email = ?", req.Email).First(&user).Error; err == nil {
+		targetUserID = &user.ID
+	}
+
+	// Check if already shared
+	var count int64
+	database.DB.Model(&models.ProblemAccess{}).
+		Where("problem_id = ? AND email = ?", problem.ID, req.Email).
+		Count(&count)
+
+	if count > 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "Already shared with this email"})
+	}
+
+	access := models.ProblemAccess{
+		ProblemID: problem.ID,
+		UserID:    targetUserID,
+		Email:     req.Email,
+	}
+	database.DB.Create(&access)
+
+	return c.JSON(fiber.Map{"message": "Problem shared successfully"})
+}
+
+// GenerateShareToken godoc
+// @Summary Generate share token
+// @Description Generate a unique token for link sharing
+// @Tags Problems
+// @Param id path int true "Problem ID"
+// @Success 200 {object} map[string]string
+// @Router /problems/{id}/share-token [post]
+func GenerateShareToken(c *fiber.Ctx) error {
+	problemID := c.Params("id")
+	userID := c.Locals("user_id").(float64)
+
+	var problem models.Problem
+	if err := database.DB.First(&problem, problemID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Problem not found"})
+	}
+
+	if problem.AuthorID != uint(userID) {
+		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
+	}
+
+	// Generate random token
+	bytes := make([]byte, 16)
+	if _, err := rand.Read(bytes); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to generate token"})
+	}
+	token := hex.EncodeToString(bytes)
+
+	problem.ShareToken = token
+	database.DB.Save(&problem)
+
+	return c.JSON(fiber.Map{"token": token})
 }

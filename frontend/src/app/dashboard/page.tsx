@@ -145,9 +145,12 @@ export default function Dashboard() {
                             {new Date(problem.created_at).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
-                            <Link href={`/problems/${problem.id}/edit`} className="text-indigo-600 hover:text-indigo-900">
+                            <button 
+                              onClick={() => router.push(`/problems/${problem.id}/edit`)} 
+                              className="text-indigo-600 hover:text-indigo-900"
+                            >
                               Изменить
-                            </Link>
+                            </button>
                             <button onClick={() => handleDeleteProblem(problem.id)} className="text-red-600 hover:text-red-900">
                               Удалить
                             </button>
@@ -198,9 +201,12 @@ export default function Dashboard() {
                             {new Date(contest.end_time).toLocaleString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
-                            <Link href={`/contests/${contest.id}/edit`} className="text-indigo-600 hover:text-indigo-900">
+                            <button 
+                              onClick={() => router.push(`/contests/${contest.id}/edit`)} 
+                              className="text-indigo-600 hover:text-indigo-900"
+                            >
                               Управление
-                            </Link>
+                            </button>
                           </td>
                         </tr>
                       ))
