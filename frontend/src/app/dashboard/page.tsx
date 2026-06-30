@@ -27,7 +27,7 @@ export default function Dashboard() {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then((res) => res.json())
-      .then(setProblems)
+      .then((data) => setProblems(Array.isArray(data) ? data : (data.data ?? [])))
       .catch(console.error);
 
     // Fetch My Contests
@@ -36,7 +36,8 @@ export default function Dashboard() {
     })
       .then((res) => res.json())
       .then((data) => {
-         const myContests = data.filter((c: any) => c.author_id === JSON.parse(userData).id);
+         const list: any[] = Array.isArray(data) ? data : (data.data ?? []);
+         const myContests = list.filter((c: any) => c.author_id === JSON.parse(userData).id);
          setContests(myContests);
       })
       .catch(console.error)

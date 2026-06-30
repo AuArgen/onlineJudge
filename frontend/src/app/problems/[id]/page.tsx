@@ -516,12 +516,14 @@ function ProblemDetailContent() {
 
             {/* Custom Input */}
             <div className="mt-3 border-t pt-3">
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Ввод для теста</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                Stdin (ввод для теста)
+              </label>
               <textarea
                 value={customInput}
                 onChange={(e) => setCustomInput(e.target.value)}
                 className="w-full border rounded-lg p-2 text-sm font-mono h-20 resize-none focus:ring-2 focus:ring-blue-500 outline-none text-gray-800"
-                placeholder="Введите входные данные..."
+                placeholder={"Пример: 1 2 3\nЕсли код использует input() — введите данные здесь перед запуском"}
               />
             </div>
           </div>
