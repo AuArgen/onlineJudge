@@ -6,6 +6,7 @@ import (
 	"onlineJudge/backend/database"
 	"onlineJudge/backend/routes"
 	"onlineJudge/backend/selftest"
+	"onlineJudge/backend/services/cleanup"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -44,6 +45,9 @@ func main() {
 
 	// Setup Routes
 	routes.SetupRoutes(app)
+
+	// Start 90-day log cleanup job (runs daily)
+	cleanup.Start()
 
 	// Run Self-Test in background
 	go selftest.Run()

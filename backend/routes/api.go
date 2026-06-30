@@ -61,4 +61,7 @@ func SetupRoutes(app *fiber.App) {
 	admin.Get("/problems", controllers.GetPendingProblems)
 	admin.Post("/problems/:id/approve", controllers.ApproveProblem)
 	admin.Post("/problems/:id/reject", controllers.RejectProblem)
+	admin.Get("/users", controllers.GetAllUsers)
+	admin.Get("/users/:id", controllers.GetUserProfile)
+	admin.Get("/activity", controllers.GetUserActivity)
 }
