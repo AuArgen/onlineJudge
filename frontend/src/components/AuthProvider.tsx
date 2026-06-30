@@ -38,12 +38,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = (token: string, userData: User) => {
-    console.log("Logging in user:", userData);
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
-    router.push('/'); 
-    router.refresh(); // Force a refresh of the current route
+    const returnTo = localStorage.getItem('returnTo') || '/';
+    localStorage.removeItem('returnTo');
+    router.push(returnTo);
+    router.refresh();
   };
 
   const logout = () => {

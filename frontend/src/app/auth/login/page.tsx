@@ -1,16 +1,32 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { API_URL } from '@/lib/api';
+import { useAuth } from '@/components/AuthProvider';
+import { Suspense } from 'react';
 
-export default function Login() {
+function LoginContent() {
   const [url, setUrl] = useState('');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
+    if (!loading && user) {
+      router.push('/');
+      return;
+    }
+
+    const returnTo = searchParams.get('returnTo') || '/';
+    if (returnTo !== '/') {
+      localStorage.setItem('returnTo', returnTo);
+    }
+
     fetch(`${API_URL}/auth/google/url`)
       .then((res) => res.json())
       .then((data) => setUrl(data.url));
-  }, []);
+  }, [loading, user, router, searchParams]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -32,5 +48,13 @@ export default function Login() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Login() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p>Жүктөлүүдө...</p></div>}>
+      <LoginContent />
+    </Suspense>
   );
 }
