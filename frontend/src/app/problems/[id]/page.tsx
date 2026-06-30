@@ -4,8 +4,11 @@ import { useEffect, useState, useRef, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Editor from '@monaco-editor/react';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useToast } from '@/components/ToastProvider';
 import { API_URL } from '@/lib/api';
+import { useLanguage, LANGUAGES } from '@/contexts/LanguageContext';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -135,6 +138,7 @@ function ProblemDetailContent() {
   const contestId = searchParams.get('contest_id');
   const { showToast } = useToast();
   const router = useRouter();
+  const { lang, setLang } = useLanguage();
   
   const [problem, setProblem] = useState<any>(null);
   const [code, setCode] = useState('// Write your code here');
@@ -145,6 +149,10 @@ function ProblemDetailContent() {
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [cooldown, setCooldown] = useState(0);
   const [user, setUser] = useState<any>(null);
+  const [customInput, setCustomInput] = useState('');
+  const [runResult, setRunResult] = useState<any>(null);
+  const [running, setRunning] = useState(false);
+  const [activeOutputTab, setActiveOutputTab] = useState<'run' | 'submit'>('submit');
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -169,13 +177,15 @@ function ProblemDetailContent() {
   }, [code, language, id]);
 
   useEffect(() => {
-    fetch(`${API_URL}/problems/${id}`)
+    const token = localStorage.getItem('token');
+    const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+    fetch(`${API_URL}/problems/${id}?lang=${lang}`, { headers })
       .then((res) => res.json())
       .then(setProblem)
       .catch(console.error);
-    
+
     fetchHistory();
-  }, [id]);
+  }, [id, lang]);
 
   useEffect(() => {
     if (cooldown > 0) {
@@ -244,6 +254,28 @@ function ProblemDetailContent() {
     }
   };
 
+  const handleRun = async () => {
+    if (!user) { router.push('/auth/login'); return; }
+    setRunning(true);
+    setRunResult(null);
+    setActiveOutputTab('run');
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_URL}/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ language, source_code: code, stdin: customInput })
+      });
+      const data = await res.json();
+      setRunResult(data);
+    } catch (err) {
+      console.error(err);
+      showToast('Ошибка при запуске', 'error');
+    } finally {
+      setRunning(false);
+    }
+  };
+
   if (!problem) return <div className="p-10 text-center">Loading...</div>;
 
   const isAuthor = user && (user.id === problem.author_id || user.role === 'admin');
@@ -285,15 +317,55 @@ function ProblemDetailContent() {
             )}
           </div>
           
-          <h1 className="text-2xl font-bold mb-4 text-gray-900">{problem.title}</h1>
-          
+          <h1 className="text-2xl font-bold mb-3 text-gray-900">{problem.title}</h1>
+
+          {/* Language selector for this problem */}
+          {problem.translations && problem.translations.length > 0 && (
+            <div className="flex gap-1.5 mb-4 flex-wrap">
+              {/* Default lang (Russian) is always available */}
+              <button
+                onClick={() => setLang('ru')}
+                className={`text-xs px-2.5 py-1 rounded-full border transition font-medium ${lang === 'ru' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'}`}
+              >
+                🇷🇺 Русский
+              </button>
+              {problem.translations.map((t: any) => {
+                const l = LANGUAGES.find(l => l.code === t.language_code);
+                return (
+                  <button
+                    key={t.language_code}
+                    onClick={() => setLang(t.language_code)}
+                    className={`text-xs px-2.5 py-1 rounded-full border transition font-medium ${lang === t.language_code ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'}`}
+                  >
+                    {l?.flag} {l?.label || t.language_code}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           <div className="flex gap-3 mb-6 text-xs font-medium text-gray-600">
             <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md border border-blue-100">Time: {problem.time_limit}s</span>
             <span className="bg-green-50 text-green-700 px-2.5 py-1 rounded-md border border-green-100">Memory: {problem.memory_limit}MB</span>
           </div>
 
-          <div className="prose prose-sm max-w-none mb-8 text-gray-800 whitespace-pre-wrap leading-relaxed">
-            {problem.description}
+          <div className="prose prose-sm max-w-none mb-8 text-gray-800 leading-relaxed
+            [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3
+            [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mb-2 [&_h2]:mt-4
+            [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-2
+            [&_p]:mb-3
+            [&_strong]:font-bold
+            [&_code]:bg-gray-100 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono [&_code]:text-gray-800
+            [&_pre]:bg-gray-100 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre]:mb-3
+            [&_pre_code]:bg-transparent [&_pre_code]:p-0
+            [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3
+            [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3
+            [&_li]:mb-1
+            [&_blockquote]:border-l-4 [&_blockquote]:border-blue-300 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-gray-600
+          ">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {problem.description}
+            </ReactMarkdown>
           </div>
 
           {/* Sample Test Cases */}
@@ -372,9 +444,10 @@ function ProblemDetailContent() {
       <div className="flex flex-col gap-4">
         <div className="sticky top-24 flex flex-col gap-4">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col">
+            {/* Toolbar */}
             <div className="flex justify-between items-center mb-3">
-              <select 
-                value={language} 
+              <select
+                value={language}
                 onChange={(e) => setLanguage(e.target.value)}
                 className="border rounded px-3 py-1.5 text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
               >
@@ -384,35 +457,52 @@ function ProblemDetailContent() {
                 <option value="go">Go</option>
                 <option value="javascript">Node.js</option>
               </select>
-              
-              {user ? (
-                <button 
-                  onClick={handleSubmit}
-                  disabled={submitting || cooldown > 0}
-                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-1.5 rounded-md text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-sm min-w-[140px] justify-center"
-                >
-                  {submitting ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Проверка...
-                    </>
-                  ) : cooldown > 0 ? (
-                    `Ждите ${cooldown}с`
-                  ) : (
-                    'Отправить решение'
-                  )}
-                </button>
-              ) : (
-                <Link href="/auth/login" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-1.5 rounded-md text-sm font-medium transition shadow-sm min-w-[140px] text-center">
-                  Войти
-                </Link>
-              )}
+
+              <div className="flex gap-2">
+                {user ? (
+                  <>
+                    <button
+                      onClick={handleRun}
+                      disabled={running || submitting}
+                      className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-1.5 rounded-md text-sm font-medium transition disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
+                    >
+                      {running ? (
+                        <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                      ) : (
+                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                      )}
+                      {running ? 'Запуск...' : 'Тест'}
+                    </button>
+                    <button
+                      onClick={() => { handleSubmit(); setActiveOutputTab('submit'); }}
+                      disabled={submitting || cooldown > 0}
+                      className="bg-green-600 hover:bg-green-700 text-white px-5 py-1.5 rounded-md text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm min-w-[120px] justify-center"
+                    >
+                      {submitting ? (
+                        <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                      ) : null}
+                      {submitting ? 'Проверка...' : cooldown > 0 ? `Ждите ${cooldown}с` : 'Отправить'}
+                    </button>
+                  </>
+                ) : (
+                  <Link href="/auth/login" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-1.5 rounded-md text-sm font-medium transition shadow-sm">
+                    Войти
+                  </Link>
+                )}
+              </div>
             </div>
 
-            <div className="border rounded-lg overflow-hidden shadow-inner h-[500px]">
+            {/* Monaco Editor */}
+            <div className="border rounded-lg overflow-hidden shadow-inner h-[420px]">
               <Editor
                 height="100%"
                 defaultLanguage="python"
@@ -420,35 +510,83 @@ function ProblemDetailContent() {
                 value={code}
                 onChange={(value) => setCode(value || '')}
                 theme="vs-light"
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                  padding: { top: 10 }
-                }}
+                options={{ minimap: { enabled: false }, fontSize: 14, scrollBeyondLastLine: false, automaticLayout: true, padding: { top: 10 } }}
+              />
+            </div>
+
+            {/* Custom Input */}
+            <div className="mt-3 border-t pt-3">
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Ввод для теста</label>
+              <textarea
+                value={customInput}
+                onChange={(e) => setCustomInput(e.target.value)}
+                className="w-full border rounded-lg p-2 text-sm font-mono h-20 resize-none focus:ring-2 focus:ring-blue-500 outline-none text-gray-800"
+                placeholder="Введите входные данные..."
               />
             </div>
           </div>
 
-          {/* Result Area (Immediate Feedback) */}
-          {result && (
-            <div className={`rounded-xl shadow-sm border p-5 transition-all duration-300 ${
-              result.status === 'Accepted' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-            }`}>
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className={`text-xl font-bold ${result.status === 'Accepted' ? 'text-green-700' : 'text-red-700'}`}>
-                    {result.status}
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Время выполнения: <span className="font-mono font-medium">{result.execution_time}</span>
-                  </p>
-                </div>
-                <button onClick={() => setSelectedSubmission(result)} className="text-sm text-blue-600 hover:underline">
-                  Подробнее
-                </button>
+          {/* Output Tabs */}
+          {(result || runResult) && (
+            <div className="rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="flex border-b bg-gray-50">
+                {runResult && (
+                  <button
+                    onClick={() => setActiveOutputTab('run')}
+                    className={`px-4 py-2 text-sm font-medium transition ${activeOutputTab === 'run' ? 'bg-white border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    Результат запуска
+                  </button>
+                )}
+                {result && (
+                  <button
+                    onClick={() => setActiveOutputTab('submit')}
+                    className={`px-4 py-2 text-sm font-medium transition ${activeOutputTab === 'submit' ? 'bg-white border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    Результат отправки
+                  </button>
+                )}
               </div>
+
+              {/* Run Result */}
+              {activeOutputTab === 'run' && runResult && (
+                <div className="p-4 bg-white">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${runResult.timed_out ? 'bg-yellow-100 text-yellow-700' : runResult.stderr ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                      {runResult.timed_out ? 'Time Limit Exceeded' : runResult.stderr ? 'Runtime Error' : 'OK'}
+                    </span>
+                    <span className="text-xs text-gray-400 font-mono">{runResult.execution_time}</span>
+                  </div>
+                  {runResult.stdout && (
+                    <div className="mb-2">
+                      <div className="text-xs font-bold text-gray-500 uppercase mb-1">Вывод</div>
+                      <pre className="bg-gray-50 border rounded p-3 text-sm font-mono text-gray-800 whitespace-pre-wrap max-h-40 overflow-y-auto">{runResult.stdout}</pre>
+                    </div>
+                  )}
+                  {runResult.stderr && (
+                    <div>
+                      <div className="text-xs font-bold text-red-500 uppercase mb-1">Ошибка</div>
+                      <pre className="bg-red-50 border border-red-100 rounded p-3 text-sm font-mono text-red-700 whitespace-pre-wrap max-h-40 overflow-y-auto">{runResult.stderr}</pre>
+                    </div>
+                  )}
+                  {!runResult.stdout && !runResult.stderr && (
+                    <p className="text-sm text-gray-500">Нет вывода</p>
+                  )}
+                </div>
+              )}
+
+              {/* Submit Result */}
+              {activeOutputTab === 'submit' && result && (
+                <div className={`p-4 ${result.status === 'Accepted' ? 'bg-green-50' : 'bg-red-50'}`}>
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className={`text-xl font-bold ${result.status === 'Accepted' ? 'text-green-700' : 'text-red-700'}`}>{result.status}</h3>
+                      <p className="text-sm text-gray-600 mt-0.5">Время: <span className="font-mono font-medium">{result.execution_time}</span></p>
+                    </div>
+                    <button onClick={() => setSelectedSubmission(result)} className="text-sm text-blue-600 hover:underline">Подробнее</button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

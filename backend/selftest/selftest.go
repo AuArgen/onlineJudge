@@ -3,11 +3,11 @@ package selftest
 import (
 	"fmt"
 	"onlineJudge/backend/services/compiler"
+	"strings"
 	"time"
 )
 
 func Run() {
-	// Wait a bit for the server to start listening, but print start message immediately
 	fmt.Println("==========================================")
 	fmt.Println("🚀 ЗАПУСК САМОДИАГНОСТИКИ (SELF-TEST)...")
 	fmt.Println("==========================================")
@@ -31,16 +31,15 @@ func Run() {
 	for _, test := range tests {
 		fmt.Printf("⏳ Testing %s (ID: %d)...\n", test.Name, test.LangID)
 
-		submission := compiler.CompilerSubmission{
+		sub := compiler.CompilerSubmission{
 			LanguageID:  test.LangID,
 			SourceCode:  test.Code,
-			Stdin:       "",
-			TimeLimit:   30.0, // Increased time limit for first pull
+			TimeLimit:   30.0,
 			MemoryLimit: 512,
 		}
 
 		start := time.Now()
-		result, err := compiler.ExecuteCode(submission)
+		results, err := compiler.ExecuteCode(sub, []string{""})
 		duration := time.Since(start)
 
 		if err != nil {
@@ -49,18 +48,15 @@ func Run() {
 			continue
 		}
 
+		result := results[0]
+
 		if result.Stderr != "" {
 			fmt.Printf("❌ ОШИБКА [%s] (Stderr): %s\n", test.Name, result.Stderr)
 			hasErrors = true
 			continue
 		}
 
-		output := result.Stdout
-		// Trim newline for comparison
-		if len(output) > 0 && output[len(output)-1] == '\n' {
-			output = output[:len(output)-1]
-		}
-
+		output := strings.TrimRight(result.Stdout, "\n")
 		if output != "test" {
 			fmt.Printf("❌ ОШИБКА [%s]: Ожидалось 'test', получено '%s'\n", test.Name, result.Stdout)
 			hasErrors = true

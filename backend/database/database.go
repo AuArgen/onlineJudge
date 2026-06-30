@@ -45,7 +45,8 @@ func Connect() {
 		&models.Contest{},
 		&models.ContestProblem{},
 		&models.ContestParticipant{},
-		&models.ProblemAccess{}, // New model
+		&models.ProblemAccess{},
+		&models.ProblemTranslation{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database: ", err)

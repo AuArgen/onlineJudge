@@ -23,9 +23,10 @@ type Problem struct {
 
 	CreatedAt time.Time `json:"created_at"`
 
-	TestCases   []TestCase      `gorm:"foreignKey:ProblemID;constraint:OnDelete:CASCADE" json:"test_cases,omitempty"`
-	Submissions []Submission    `gorm:"foreignKey:ProblemID;constraint:OnDelete:CASCADE" json:"-"`
-	AccessList  []ProblemAccess `gorm:"foreignKey:ProblemID;constraint:OnDelete:CASCADE" json:"access_list,omitempty"`
+	TestCases    []TestCase           `gorm:"foreignKey:ProblemID;constraint:OnDelete:CASCADE" json:"test_cases,omitempty"`
+	Submissions  []Submission         `gorm:"foreignKey:ProblemID;constraint:OnDelete:CASCADE" json:"-"`
+	AccessList   []ProblemAccess      `gorm:"foreignKey:ProblemID;constraint:OnDelete:CASCADE" json:"access_list,omitempty"`
+	Translations []ProblemTranslation `gorm:"foreignKey:ProblemID;constraint:OnDelete:CASCADE" json:"translations,omitempty"`
 
 	// Virtual field for statistics
 	SolvedCount int64 `gorm:"-" json:"solved_count"`

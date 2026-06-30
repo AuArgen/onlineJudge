@@ -176,20 +176,24 @@ export default function ContestDetail() {
               <table className="min-w-full divide-y divide-gray-200 text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-2 text-left font-medium text-gray-500">#</th>
-                    <th className="px-4 py-2 text-left font-medium text-gray-500">Участник</th>
-                    <th className="px-4 py-2 text-right font-medium text-gray-500">Решено</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-500">#</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-500">Участник</th>
+                    <th className="px-3 py-2 text-center font-medium text-gray-500">Решено</th>
+                    <th className="px-3 py-2 text-right font-medium text-gray-500">Штраф</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {leaderboard.length === 0 ? (
-                    <tr><td colSpan={3} className="px-4 py-4 text-center text-gray-500">Нет данных</td></tr>
+                    <tr><td colSpan={4} className="px-4 py-4 text-center text-gray-500">Нет данных</td></tr>
                   ) : (
                     leaderboard.map((rank: any, index: number) => (
-                      <tr key={index}>
-                        <td className="px-4 py-2 text-gray-500">{index + 1}</td>
-                        <td className="px-4 py-2 font-medium text-gray-900">{rank.user_name}</td>
-                        <td className="px-4 py-2 text-right font-bold text-green-600">{rank.solved_count}</td>
+                      <tr key={index} className={index === 0 ? 'bg-yellow-50' : ''}>
+                        <td className="px-3 py-2 text-gray-500 font-mono">
+                          {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
+                        </td>
+                        <td className="px-3 py-2 font-medium text-gray-900">{rank.user_name}</td>
+                        <td className="px-3 py-2 text-center font-bold text-green-600">{rank.solved_count}</td>
+                        <td className="px-3 py-2 text-right text-gray-500 font-mono text-xs">{rank.penalty}м</td>
                       </tr>
                     ))
                   )}

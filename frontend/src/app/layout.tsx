@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { ToastProvider } from "@/components/ToastProvider";
 import { AuthProvider } from "@/components/AuthProvider";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,6 +22,7 @@ export default function RootLayout({
     <html lang="ru">
       <body className={`${inter.className} bg-gray-50 text-gray-900 min-h-screen flex flex-col`}>
         <AuthProvider>
+          <LanguageProvider>
           <ToastProvider>
             <Navbar />
             <main className="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -32,6 +34,7 @@ export default function RootLayout({
               </div>
             </footer>
           </ToastProvider>
+          </LanguageProvider>
         </AuthProvider>
       </body>
     </html>

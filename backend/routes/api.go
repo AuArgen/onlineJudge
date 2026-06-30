@@ -35,18 +35,25 @@ func SetupRoutes(app *fiber.App) {
 	api.Delete("/problems/:id/testcases/:testcase_id", controllers.DeleteTestCase)
 	api.Post("/problems/generate-output", controllers.GenerateOutput)
 
+	// Translations
+	api.Put("/problems/:id/translations/:lang", controllers.UpsertProblemTranslation)
+	api.Delete("/problems/:id/translations/:lang", controllers.DeleteProblemTranslation)
+
 	// Sharing
 	api.Post("/problems/:id/share", controllers.ShareProblem)
 	api.Post("/problems/:id/share-token", controllers.GenerateShareToken)
 
 	api.Post("/submit", controllers.SubmitSolution)
+	api.Post("/run", controllers.RunCode)
 	api.Get("/history", controllers.GetHistory)
 	api.Get("/submission/:id", controllers.GetSubmission)
 	api.Get("/profile", controllers.GetProfile)
 
 	// Contest Management
 	api.Post("/contests", controllers.CreateContest)
+	api.Put("/contests/:id", controllers.UpdateContest)
 	api.Post("/contests/:id/problems", controllers.AddProblemToContest)
+	api.Delete("/contests/:id/problems/:problem_id", controllers.RemoveProblemFromContest)
 	api.Post("/contests/:id/join", controllers.JoinContest)
 
 	// Admin Routes

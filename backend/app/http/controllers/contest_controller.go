@@ -79,6 +79,57 @@ func CreateContest(c *fiber.Ctx) error {
 	return c.JSON(contest)
 }
 
+// UpdateContest godoc
+// @Summary Update a contest
+// @Description Update contest details (author/admin only)
+// @Tags Contests
+// @Accept json
+// @Produce json
+// @Param id path int true "Contest ID"
+// @Success 200 {object} models.Contest
+// @Router /contests/{id} [put]
+func UpdateContest(c *fiber.Ctx) error {
+	id := c.Params("id")
+	userID := c.Locals("user_id").(float64)
+	role := c.Locals("role").(string)
+
+	var contest models.Contest
+	if err := database.DB.First(&contest, id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Contest not found"})
+	}
+
+	if contest.AuthorID != uint(userID) && role != "admin" {
+		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
+	}
+
+	type UpdateRequest struct {
+		Title       string    `json:"title"`
+		Description string    `json:"description"`
+		StartTime   time.Time `json:"start_time"`
+		EndTime     time.Time `json:"end_time"`
+		Visibility  string    `json:"visibility"`
+		Status      string    `json:"status"`
+	}
+	var req UpdateRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
+	}
+
+	contest.Title = req.Title
+	contest.Description = req.Description
+	contest.StartTime = req.StartTime
+	contest.EndTime = req.EndTime
+	if req.Visibility != "" {
+		contest.Visibility = req.Visibility
+	}
+	if req.Status != "" {
+		contest.Status = req.Status
+	}
+
+	database.DB.Save(&contest)
+	return c.JSON(contest)
+}
+
 // AddProblemToContest godoc
 // @Summary Add problem to contest
 // @Description Add an existing problem to a contest
@@ -91,6 +142,17 @@ func AddProblemToContest(c *fiber.Ctx) error {
 	contestID, err := c.ParamsInt("id")
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid contest ID"})
+	}
+
+	userID := c.Locals("user_id").(float64)
+	role := c.Locals("role").(string)
+
+	var contest models.Contest
+	if err := database.DB.First(&contest, contestID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Contest not found"})
+	}
+	if contest.AuthorID != uint(userID) && role != "admin" {
+		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
 	}
 
 	type Request struct {
@@ -142,9 +204,42 @@ func JoinContest(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Joined successfully"})
 }
 
+// RemoveProblemFromContest godoc
+// @Summary Remove problem from contest
+// @Description Remove a problem from a contest (author/admin only)
+// @Tags Contests
+// @Param id path int true "Contest ID"
+// @Param problem_id path int true "Problem ID"
+// @Success 200 {object} map[string]string
+// @Router /contests/{id}/problems/{problem_id} [delete]
+func RemoveProblemFromContest(c *fiber.Ctx) error {
+	contestID, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid contest ID"})
+	}
+	problemID, err := c.ParamsInt("problem_id")
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid problem ID"})
+	}
+
+	userID := c.Locals("user_id").(float64)
+	role := c.Locals("role").(string)
+
+	var contest models.Contest
+	if err := database.DB.First(&contest, contestID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Contest not found"})
+	}
+	if contest.AuthorID != uint(userID) && role != "admin" {
+		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
+	}
+
+	database.DB.Where("contest_id = ? AND problem_id = ?", contestID, problemID).Delete(&models.ContestProblem{})
+	return c.JSON(fiber.Map{"message": "Problem removed from contest"})
+}
+
 // GetContestLeaderboard godoc
 // @Summary Get contest leaderboard
-// @Description Get ranking for a contest
+// @Description Get ICPC-style ranking: sorted by solved count DESC, penalty ASC
 // @Tags Contests
 // @Param id path int true "Contest ID"
 // @Success 200 {array} object
@@ -156,21 +251,42 @@ func GetContestLeaderboard(c *fiber.Ctx) error {
 		UserID      uint   `json:"user_id"`
 		UserName    string `json:"user_name"`
 		SolvedCount int64  `json:"solved_count"`
+		Penalty     int    `json:"penalty"`
 	}
 
 	var ranks []Rank
 
+	// ICPC scoring: penalty = minutes_to_first_ac + 20 * wrong_submissions_before_ac
 	database.DB.Raw(`
-		SELECT 
-			u.id as user_id, 
-			u.name as user_name, 
-			COUNT(DISTINCT s.problem_id) as solved_count
+		WITH first_ac AS (
+			SELECT user_id, problem_id, MIN(created_at) AS ac_time
+			FROM submissions
+			WHERE contest_id = ? AND status = 'Accepted'
+			GROUP BY user_id, problem_id
+		),
+		wrong_before_ac AS (
+			SELECT s.user_id, s.problem_id, COUNT(*) AS wrong_count
+			FROM submissions s
+			JOIN first_ac fa ON s.user_id = fa.user_id AND s.problem_id = fa.problem_id
+			WHERE s.contest_id = ? AND s.status != 'Accepted' AND s.created_at < fa.ac_time
+			GROUP BY s.user_id, s.problem_id
+		),
+		contest_start AS (SELECT start_time FROM contests WHERE id = ?)
+		SELECT
+			u.id AS user_id,
+			u.name AS user_name,
+			COUNT(fa.problem_id) AS solved_count,
+			COALESCE(SUM(
+				FLOOR(EXTRACT(EPOCH FROM (fa.ac_time - cs.start_time)) / 60)
+				+ COALESCE(wba.wrong_count, 0) * 20
+			), 0)::INTEGER AS penalty
 		FROM users u
-		JOIN submissions s ON u.id = s.user_id
-		WHERE s.contest_id = ? AND s.status = 'Accepted'
+		JOIN first_ac fa ON u.id = fa.user_id
+		CROSS JOIN contest_start cs
+		LEFT JOIN wrong_before_ac wba ON fa.user_id = wba.user_id AND fa.problem_id = wba.problem_id
 		GROUP BY u.id, u.name
-		ORDER BY solved_count DESC
-	`, contestID).Scan(&ranks)
+		ORDER BY solved_count DESC, penalty ASC
+	`, contestID, contestID, contestID).Scan(&ranks)
 
 	return c.JSON(ranks)
 }

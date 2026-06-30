@@ -15,24 +15,22 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 )
 
-// CompilerSubmission is a DTO to avoid circular dependency with models
 type CompilerSubmission struct {
 	SourceCode  string
 	LanguageID  int
-	Stdin       string
 	TimeLimit   float64
 	MemoryLimit int
 }
 
-type ExecutionResult struct {
+type TestResult struct {
 	Stdout        string
 	Stderr        string
 	ExecutionTime string
+	TimedOut      bool
 }
 
-// Basic security check for dangerous keywords
 func checkSecurity(code string, langID int) error {
-	dangerous := []string{}
+	var dangerous []string
 	switch langID {
 	case 71: // Python
 		dangerous = []string{"os.system", "subprocess", "exec(", "eval(", "open(", "import os", "import subprocess"}
@@ -45,7 +43,6 @@ func checkSecurity(code string, langID int) error {
 	case 62: // Java
 		dangerous = []string{"Runtime.getRuntime", "ProcessBuilder", "System.exit"}
 	}
-
 	for _, keyword := range dangerous {
 		if strings.Contains(code, keyword) {
 			return fmt.Errorf("security violation: forbidden keyword '%s'", keyword)
@@ -54,63 +51,56 @@ func checkSecurity(code string, langID int) error {
 	return nil
 }
 
-// ExecuteCode runs the submission in an isolated Docker container
-func ExecuteCode(sub CompilerSubmission) (ExecutionResult, error) {
+// ExecuteCode compiles once and runs all test cases in a single Docker container.
+func ExecuteCode(sub CompilerSubmission, inputs []string) ([]TestResult, error) {
 	if err := checkSecurity(sub.SourceCode, sub.LanguageID); err != nil {
-		return ExecutionResult{}, err
+		return nil, err
+	}
+	if len(inputs) == 0 {
+		return []TestResult{}, nil
 	}
 
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.44"))
 	if err != nil {
-		return ExecutionResult{}, fmt.Errorf("failed to create docker client: %v", err)
+		return nil, fmt.Errorf("failed to create docker client: %v", err)
 	}
 	defer cli.Close()
 
-	var imageName string
-	var compileCmd []string
-	var runCmd []string
-	var fileName string
-	var env []string
-
-	// Adjust TimeLimit for compiled languages or 'go run' which includes build time
-	effectiveTimeLimit := sub.TimeLimit
-	if sub.LanguageID == 60 { // Go
-		effectiveTimeLimit += 10.0 // Add 10s buffer for 'go run' compilation (first run is slow)
-	} else if sub.LanguageID == 62 { // Java
-		effectiveTimeLimit += 2.0 // Java startup is slow
-	}
+	var imageName, fileName string
+	var compileCmd, runCmd, env []string
 
 	switch sub.LanguageID {
 	case 71: // Python 3.8
 		imageName = "python:3.8-slim"
 		fileName = "main.py"
-		runCmd = []string{"python3", fileName}
+		runCmd = []string{"python3", "main.py"}
 	case 63: // Node.js
 		imageName = "node:14-alpine"
 		fileName = "main.js"
-		runCmd = []string{"node", fileName}
-	case 60: // Go
+		runCmd = []string{"node", "main.js"}
+	case 60: // Go — build binary once, run N times (much faster than go run)
 		imageName = "golang:1.23-alpine"
 		fileName = "main.go"
 		env = []string{"GOCACHE=/tmp/gocache", "CGO_ENABLED=0"}
-		runCmd = []string{"go", "run", "main.go"}
+		compileCmd = []string{"go", "build", "-o", "main", "main.go"}
+		runCmd = []string{"./main"}
 	case 54: // C++ (GCC)
 		imageName = "gcc:latest"
 		fileName = "main.cpp"
-		compileCmd = []string{"g++", "-o", "main", "main.cpp"}
+		compileCmd = []string{"g++", "-O2", "-o", "main", "main.cpp"}
 		runCmd = []string{"./main"}
-	case 62: // Java (OpenJDK)
+	case 62: // Java
 		imageName = "eclipse-temurin:11-jdk-jammy"
 		fileName = "Main.java"
 		compileCmd = []string{"javac", "Main.java"}
 		runCmd = []string{"java", "Main"}
 	default:
-		return ExecutionResult{}, fmt.Errorf("unsupported language id: %d", sub.LanguageID)
+		return nil, fmt.Errorf("unsupported language id: %d", sub.LanguageID)
 	}
 
 	if err := ensureImage(ctx, cli, imageName); err != nil {
-		return ExecutionResult{}, fmt.Errorf("failed to pull image %s: %v", imageName, err)
+		return nil, fmt.Errorf("failed to pull image %s: %v", imageName, err)
 	}
 
 	memoryLimitMB := sub.MemoryLimit
@@ -133,104 +123,124 @@ func ExecuteCode(sub CompilerSubmission) (ExecutionResult, error) {
 		},
 	}, nil, nil, "")
 	if err != nil {
-		return ExecutionResult{}, fmt.Errorf("failed to create container: %v", err)
+		return nil, fmt.Errorf("failed to create container: %v", err)
 	}
 
 	containerID := resp.ID
-	defer func() {
-		cli.ContainerRemove(ctx, containerID, container.RemoveOptions{Force: true})
-	}()
+	defer cli.ContainerRemove(ctx, containerID, container.RemoveOptions{Force: true})
 
 	if err := cli.ContainerStart(ctx, containerID, container.StartOptions{}); err != nil {
-		return ExecutionResult{}, fmt.Errorf("failed to start container: %v", err)
+		return nil, fmt.Errorf("failed to start container: %v", err)
 	}
 
 	if err := copyToContainer(ctx, cli, containerID, fileName, sub.SourceCode); err != nil {
-		return ExecutionResult{}, fmt.Errorf("failed to copy code: %v", err)
+		return nil, fmt.Errorf("failed to copy code: %v", err)
 	}
 
+	// Compile once
 	if len(compileCmd) > 0 {
-		execConfig := types.ExecConfig{
-			Cmd:          compileCmd,
-			AttachStderr: true,
-			AttachStdout: true,
-			WorkingDir:   "/app",
-			Env:          env,
-		}
-		execIDResp, err := cli.ContainerExecCreate(ctx, containerID, execConfig)
-		if err != nil {
-			return ExecutionResult{}, fmt.Errorf("failed to create exec for compilation: %v", err)
-		}
-
-		resp, err := cli.ContainerExecAttach(ctx, execIDResp.ID, types.ExecStartCheck{})
-		if err != nil {
-			return ExecutionResult{}, fmt.Errorf("failed to attach exec for compilation: %v", err)
-		}
-		defer resp.Close()
-
-		var errBuf bytes.Buffer
-		stdcopy.StdCopy(&errBuf, &errBuf, resp.Reader)
-
-		inspectResp, err := cli.ContainerExecInspect(ctx, execIDResp.ID)
-		if err == nil && inspectResp.ExitCode != 0 {
-			return ExecutionResult{Stderr: "Compilation Error:\n" + errBuf.String()}, nil
+		compileOutput, exitCode := compile(ctx, cli, containerID, compileCmd, env)
+		if exitCode != 0 {
+			compileErr := TestResult{Stderr: "Compilation Error:\n" + compileOutput}
+			results := make([]TestResult, len(inputs))
+			for i := range results {
+				results[i] = compileErr
+			}
+			return results, nil
 		}
 	}
 
-	execConfig := types.ExecConfig{
-		Cmd:          runCmd,
+	timeLimit := sub.TimeLimit
+	if timeLimit <= 0 {
+		timeLimit = 5.0
+	}
+	timeout := time.Duration(timeLimit*1000) * time.Millisecond
+
+	results := make([]TestResult, len(inputs))
+	for i, input := range inputs {
+		stdout, stderr, duration, timedOut := runOnce(ctx, cli, containerID, runCmd, env, input, timeout)
+		execTime := duration.String()
+		if timedOut {
+			execTime = fmt.Sprintf(">%.1fs", timeLimit)
+		}
+		results[i] = TestResult{
+			Stdout:        stdout,
+			Stderr:        stderr,
+			ExecutionTime: execTime,
+			TimedOut:      timedOut,
+		}
+	}
+
+	return results, nil
+}
+
+func compile(ctx context.Context, cli *client.Client, containerID string, cmd []string, env []string) (string, int) {
+	execCfg := types.ExecConfig{
+		Cmd:          cmd,
+		AttachStdout: true,
+		AttachStderr: true,
+		WorkingDir:   "/app",
+		Env:          env,
+	}
+	execResp, err := cli.ContainerExecCreate(ctx, containerID, execCfg)
+	if err != nil {
+		return err.Error(), 1
+	}
+	attach, err := cli.ContainerExecAttach(ctx, execResp.ID, types.ExecStartCheck{})
+	if err != nil {
+		return err.Error(), 1
+	}
+	defer attach.Close()
+
+	var buf bytes.Buffer
+	stdcopy.StdCopy(&buf, &buf, attach.Reader)
+
+	inspect, err := cli.ContainerExecInspect(ctx, execResp.ID)
+	if err != nil {
+		return buf.String(), 0
+	}
+	return buf.String(), inspect.ExitCode
+}
+
+func runOnce(ctx context.Context, cli *client.Client, containerID string, cmd []string, env []string, stdin string, timeout time.Duration) (stdout, stderr string, duration time.Duration, timedOut bool) {
+	execCfg := types.ExecConfig{
+		Cmd:          cmd,
 		AttachStdin:  true,
 		AttachStdout: true,
 		AttachStderr: true,
 		WorkingDir:   "/app",
 		Env:          env,
 	}
-	execIDResp, err := cli.ContainerExecCreate(ctx, containerID, execConfig)
+	execResp, err := cli.ContainerExecCreate(ctx, containerID, execCfg)
 	if err != nil {
-		return ExecutionResult{}, fmt.Errorf("failed to create exec for run: %v", err)
+		return "", err.Error(), 0, false
 	}
-
-	respAttach, err := cli.ContainerExecAttach(ctx, execIDResp.ID, types.ExecStartCheck{})
+	attach, err := cli.ContainerExecAttach(ctx, execResp.ID, types.ExecStartCheck{})
 	if err != nil {
-		return ExecutionResult{}, fmt.Errorf("failed to attach exec for run: %v", err)
+		return "", err.Error(), 0, false
 	}
-	defer respAttach.Close()
+	defer attach.Close()
 
 	go func() {
-		defer respAttach.CloseWrite()
-		io.Copy(respAttach.Conn, strings.NewReader(sub.Stdin))
+		defer attach.CloseWrite()
+		io.Copy(attach.Conn, strings.NewReader(stdin))
 	}()
 
-	startTime := time.Now()
+	start := time.Now()
 
-	var stdout, stderr bytes.Buffer
-	outputDone := make(chan error)
+	var outBuf, errBuf bytes.Buffer
+	done := make(chan struct{})
 	go func() {
-		_, err := stdcopy.StdCopy(&stdout, &stderr, respAttach.Reader)
-		outputDone <- err
+		stdcopy.StdCopy(&outBuf, &errBuf, attach.Reader)
+		close(done)
 	}()
-
-	if effectiveTimeLimit <= 0 {
-		effectiveTimeLimit = 5.0
-	}
 
 	select {
-	case <-outputDone:
-	case <-time.After(time.Duration(effectiveTimeLimit*1000) * time.Millisecond):
-		return ExecutionResult{
-			Stdout:        stdout.String(),
-			Stderr:        stderr.String() + fmt.Sprintf("\nExecution Timed Out (Limit: %.1fs)", sub.TimeLimit),
-			ExecutionTime: fmt.Sprintf(">%.1fs", sub.TimeLimit),
-		}, nil
+	case <-done:
+		return outBuf.String(), errBuf.String(), time.Since(start), false
+	case <-time.After(timeout):
+		return outBuf.String(), errBuf.String(), time.Since(start), true
 	}
-
-	duration := time.Since(startTime)
-
-	return ExecutionResult{
-		Stdout:        stdout.String(),
-		Stderr:        stderr.String(),
-		ExecutionTime: duration.String(),
-	}, nil
 }
 
 func ensureImage(ctx context.Context, cli *client.Client, imageName string) error {
@@ -238,13 +248,11 @@ func ensureImage(ctx context.Context, cli *client.Client, imageName string) erro
 	if err == nil {
 		return nil
 	}
-
 	reader, err := cli.ImagePull(ctx, imageName, types.ImagePullOptions{})
 	if err != nil {
 		return err
 	}
 	defer reader.Close()
-
 	io.Copy(io.Discard, reader)
 	return nil
 }
@@ -252,7 +260,6 @@ func ensureImage(ctx context.Context, cli *client.Client, imageName string) erro
 func copyToContainer(ctx context.Context, cli *client.Client, containerID, filename, content string) error {
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
-
 	hdr := &tar.Header{
 		Name: filename,
 		Mode: 0644,
@@ -267,6 +274,5 @@ func copyToContainer(ctx context.Context, cli *client.Client, containerID, filen
 	if err := tw.Close(); err != nil {
 		return err
 	}
-
 	return cli.CopyToContainer(ctx, containerID, "/app", &buf, types.CopyToContainerOptions{})
 }

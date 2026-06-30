@@ -77,12 +77,52 @@ func GetProblems(c *fiber.Ctx) error {
 		// "all" is default (handled by base logic)
 	}
 
-	// Search
+	lang := c.Query("lang", "")
+
+	// Search in default title AND in translations for the requested language
 	if search != "" {
-		query = query.Where("title ILIKE ?", "%"+search+"%")
+		if lang != "" {
+			query = query.Where(
+				"title ILIKE ? OR id IN (SELECT problem_id FROM problem_translations WHERE language_code = ? AND title ILIKE ?)",
+				"%"+search+"%", lang, "%"+search+"%",
+			)
+		} else {
+			query = query.Where("title ILIKE ?", "%"+search+"%")
+		}
 	}
 
-	query.Order("created_at desc").Find(&problems)
+	page := c.QueryInt("page", 1)
+	limit := c.QueryInt("limit", 20)
+	if limit > 100 {
+		limit = 100
+	}
+	if page < 1 {
+		page = 1
+	}
+
+	var total int64
+	query.Count(&total)
+	query.Order("created_at desc").Offset((page - 1) * limit).Limit(limit).Find(&problems)
+
+	// Apply translations if lang requested
+	if lang != "" && len(problems) > 0 {
+		problemIDs := make([]uint, len(problems))
+		for i, p := range problems {
+			problemIDs[i] = p.ID
+		}
+		var translations []models.ProblemTranslation
+		database.DB.Where("problem_id IN ? AND language_code = ?", problemIDs, lang).Find(&translations)
+		tMap := map[uint]models.ProblemTranslation{}
+		for _, t := range translations {
+			tMap[t.ProblemID] = t
+		}
+		for i := range problems {
+			if t, ok := tMap[problems[i].ID]; ok {
+				problems[i].Title = t.Title
+				problems[i].Description = t.Description
+			}
+		}
+	}
 
 	// Calculate SolvedCount
 	for i := range problems {
@@ -94,7 +134,14 @@ func GetProblems(c *fiber.Ctx) error {
 		problems[i].SolvedCount = count
 	}
 
-	return c.JSON(problems)
+	totalPages := (total + int64(limit) - 1) / int64(limit)
+	return c.JSON(fiber.Map{
+		"data":        problems,
+		"total":       total,
+		"page":        page,
+		"limit":       limit,
+		"total_pages": totalPages,
+	})
 }
 
 // GetProblem godoc
@@ -140,12 +187,23 @@ func GetProblem(c *fiber.Ctx) error {
 		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
 	}
 
-	// If user is author or admin, load ALL test cases
+	// Load test cases and translations
 	if problem.AuthorID == uint(userID) || role == "admin" {
-		database.DB.Preload("TestCases").First(&problem, id)
+		database.DB.Preload("TestCases").Preload("Translations").First(&problem, id)
 	} else {
-		// Otherwise, load only SAMPLE test cases
-		database.DB.Preload("TestCases", "is_sample = ?", true).First(&problem, id)
+		database.DB.Preload("TestCases", "is_sample = ?", true).Preload("Translations").First(&problem, id)
+	}
+
+	// Apply requested language
+	lang := c.Query("lang", "")
+	if lang != "" {
+		for _, t := range problem.Translations {
+			if t.LanguageCode == lang {
+				problem.Title = t.Title
+				problem.Description = t.Description
+				break
+			}
+		}
 	}
 
 	return c.JSON(problem)
@@ -319,24 +377,21 @@ func AddTestCase(c *fiber.Ctx) error {
 		langID = 71
 	}
 
-	compSubmission := compiler.CompilerSubmission{
+	results, err := compiler.ExecuteCode(compiler.CompilerSubmission{
 		SourceCode:  problem.AuthorSourceCode,
 		LanguageID:  langID,
-		Stdin:       testCase.Input,
 		TimeLimit:   5.0,
 		MemoryLimit: 256,
-	}
-
-	result, err := compiler.ExecuteCode(compSubmission)
+	}, []string{testCase.Input})
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Execution failed: " + err.Error()})
 	}
-	if result.Stderr != "" {
-		return c.Status(400).JSON(fiber.Map{"error": "Author solution Runtime Error: " + result.Stderr})
+	if results[0].Stderr != "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Author solution Runtime Error: " + results[0].Stderr})
 	}
 
 	// Set the generated output
-	testCase.ExpectedOutput = strings.TrimSpace(result.Stdout)
+	testCase.ExpectedOutput = strings.TrimSpace(results[0].Stdout)
 	testCase.ProblemID = problem.ID
 
 	database.DB.Create(&testCase)
@@ -404,23 +459,20 @@ func GenerateOutput(c *fiber.Ctx) error {
 		langID = 63
 	}
 
-	compSubmission := compiler.CompilerSubmission{
+	results, err := compiler.ExecuteCode(compiler.CompilerSubmission{
 		SourceCode:  req.SourceCode,
 		LanguageID:  langID,
-		Stdin:       req.Input,
-		TimeLimit:   5.0, // Default limit for generation
+		TimeLimit:   5.0,
 		MemoryLimit: 256,
-	}
-
-	result, err := compiler.ExecuteCode(compSubmission)
+	}, []string{req.Input})
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Execution failed: " + err.Error()})
 	}
-	if result.Stderr != "" {
-		return c.Status(400).JSON(fiber.Map{"error": "Runtime Error: " + result.Stderr})
+	if results[0].Stderr != "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Runtime Error: " + results[0].Stderr})
 	}
 
-	return c.JSON(fiber.Map{"output": result.Stdout})
+	return c.JSON(fiber.Map{"output": results[0].Stdout})
 }
 
 // ShareProblem godoc
@@ -477,6 +529,73 @@ func ShareProblem(c *fiber.Ctx) error {
 	database.DB.Create(&access)
 
 	return c.JSON(fiber.Map{"message": "Problem shared successfully"})
+}
+
+// UpsertProblemTranslation creates or updates a translation for a problem
+func UpsertProblemTranslation(c *fiber.Ctx) error {
+	problemID := c.Params("id")
+	langCode := c.Params("lang")
+	userID := c.Locals("user_id").(float64)
+	role := c.Locals("role").(string)
+
+	validLangs := map[string]bool{"ru": true, "ky": true, "en": true, "de": true, "fr": true, "zh": true, "ar": true}
+	if !validLangs[langCode] {
+		return c.Status(400).JSON(fiber.Map{"error": "Unsupported language code"})
+	}
+
+	var problem models.Problem
+	if err := database.DB.First(&problem, problemID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Problem not found"})
+	}
+	if problem.AuthorID != uint(userID) && role != "admin" {
+		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
+	}
+
+	type Req struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+	}
+	var req Req
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
+	}
+
+	var translation models.ProblemTranslation
+	err := database.DB.Where("problem_id = ? AND language_code = ?", problem.ID, langCode).First(&translation).Error
+	if err != nil {
+		translation = models.ProblemTranslation{
+			ProblemID:    problem.ID,
+			LanguageCode: langCode,
+			Title:        req.Title,
+			Description:  req.Description,
+		}
+		database.DB.Create(&translation)
+	} else {
+		translation.Title = req.Title
+		translation.Description = req.Description
+		database.DB.Save(&translation)
+	}
+
+	return c.JSON(translation)
+}
+
+// DeleteProblemTranslation removes a translation
+func DeleteProblemTranslation(c *fiber.Ctx) error {
+	problemID := c.Params("id")
+	langCode := c.Params("lang")
+	userID := c.Locals("user_id").(float64)
+	role := c.Locals("role").(string)
+
+	var problem models.Problem
+	if err := database.DB.First(&problem, problemID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Problem not found"})
+	}
+	if problem.AuthorID != uint(userID) && role != "admin" {
+		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
+	}
+
+	database.DB.Where("problem_id = ? AND language_code = ?", problem.ID, langCode).Delete(&models.ProblemTranslation{})
+	return c.JSON(fiber.Map{"message": "Translation deleted"})
 }
 
 // GenerateShareToken godoc

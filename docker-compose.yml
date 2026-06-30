@@ -2,14 +2,14 @@ version: '3.8'
 
 services:
   backend:
-    build: 
+    build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
       - "${APP_PORT}:8000"
     environment:
       - APP_PORT=8000
-      - DATABASE_URL=host=db user=${DB_USER} password=${DB_PASSWORD} dbname=${DB_NAME} port=5432 sslmode=disable
+      - DATABASE_URL=host=${DB_HOST} user=${DB_USER} password=${DB_PASSWORD} dbname=${DB_NAME} port=${DB_PORT} sslmode=${DB_SSLMODE:-disable}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
@@ -17,10 +17,7 @@ services:
       - ADMIN_EMAIL=${ADMIN_EMAIL}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
     volumes:
-      # Mount docker socket for Docker-in-Docker (Code Execution)
       - /var/run/docker.sock:/var/run/docker.sock
-    depends_on:
-      - db
     restart: always
 
   frontend:
@@ -36,18 +33,3 @@ services:
     depends_on:
       - backend
     restart: always
-
-  db:
-    image: postgres:13
-    ports:
-      - "${DB_EXTERNAL_PORT}:5432"
-    environment:
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${DB_NAME}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: always
-
-volumes:
-  postgres_data:

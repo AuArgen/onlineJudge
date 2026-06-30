@@ -3,10 +3,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
+import { useLanguage, LANGUAGES } from '@/contexts/LanguageContext';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
+  const { lang, setLang } = useLanguage();
 
   const isActive = (path: string) => pathname === path;
 
@@ -58,6 +60,20 @@ export default function Navbar() {
                 Рейтинг
               </Link>
             </div>
+          </div>
+
+          {/* Language Selector */}
+          <div className="flex items-center">
+            <select
+              value={lang}
+              onChange={e => setLang(e.target.value)}
+              className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              title="Выбрать язык"
+            >
+              {LANGUAGES.map(l => (
+                <option key={l.code} value={l.code}>{l.flag} {l.label}</option>
+              ))}
+            </select>
           </div>
 
           {/* User Menu */}
