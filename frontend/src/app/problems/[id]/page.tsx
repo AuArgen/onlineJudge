@@ -13,6 +13,68 @@ import { useLanguage, LANGUAGES } from '@/contexts/LanguageContext';
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
+const CODE_TEMPLATES: Record<string, string> = {
+  python: `import sys
+input = sys.stdin.readline
+
+def main():
+    # Your solution here
+    pass
+
+main()`,
+  cpp: `#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+
+    // Your solution here
+
+    return 0;
+}`,
+  java: `import java.util.*;
+import java.io.*;
+
+public class Main {
+    public static void main(String[] args) throws IOException {
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+        // Your solution here
+
+    }
+}`,
+  go: `package main
+
+import (
+\t"bufio"
+\t"fmt"
+\t"os"
+)
+
+var reader *bufio.Reader
+var writer *bufio.Writer
+
+func main() {
+\treader = bufio.NewReader(os.Stdin)
+\twriter = bufio.NewWriter(os.Stdout)
+\tdefer writer.Flush()
+\t
+\t// Your solution here
+\t_ = fmt.Fscan
+}`,
+  javascript: `const readline = require('readline');
+const rl = readline.createInterface({ input: process.stdin });
+const lines = [];
+rl.on('line', (line) => lines.push(line.trim()));
+rl.on('close', () => {
+    // Your solution here
+
+});`,
+};
+
+const DEFAULT_CODE = '// Write your code here';
+const ALL_TEMPLATES = new Set([DEFAULT_CODE, ...Object.values(CODE_TEMPLATES)]);
+
 // Modal for Submission Details
 function SubmissionDetailsModal({ submission, onClose }: { submission: any, onClose: () => void }) {
   const [details, setDetails] = useState<any>(null);
@@ -141,7 +203,7 @@ function ProblemDetailContent() {
   const { lang, setLang } = useLanguage();
   
   const [problem, setProblem] = useState<any>(null);
-  const [code, setCode] = useState('// Write your code here');
+  const [code, setCode] = useState(CODE_TEMPLATES.python);
   const [language, setLanguage] = useState('python');
   const [result, setResult] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -162,17 +224,14 @@ function ProblemDetailContent() {
   }, []);
 
   useEffect(() => {
+    const savedLang = localStorage.getItem(`lang_problem_${id}`) || 'python';
     const savedCode = localStorage.getItem(`code_problem_${id}`);
-    if (savedCode) setCode(savedCode);
-    
-    const savedLang = localStorage.getItem(`lang_problem_${id}`);
-    if (savedLang) setLanguage(savedLang);
+    setLanguage(savedLang);
+    setCode(savedCode || CODE_TEMPLATES[savedLang] || CODE_TEMPLATES.python);
   }, [id]);
 
   useEffect(() => {
-    if (code !== '// Write your code here') {
-      localStorage.setItem(`code_problem_${id}`, code);
-    }
+    localStorage.setItem(`code_problem_${id}`, code);
     localStorage.setItem(`lang_problem_${id}`, language);
   }, [code, language, id]);
 
@@ -448,7 +507,13 @@ function ProblemDetailContent() {
             <div className="flex justify-between items-center mb-3">
               <select
                 value={language}
-                onChange={(e) => setLanguage(e.target.value)}
+                onChange={(e) => {
+                  const newLang = e.target.value;
+                  setLanguage(newLang);
+                  if (ALL_TEMPLATES.has(code)) {
+                    setCode(CODE_TEMPLATES[newLang] || '');
+                  }
+                }}
                 className="border rounded px-3 py-1.5 text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
               >
                 <option value="python">Python</option>
