@@ -5,6 +5,11 @@ import { useRouter, useParams } from 'next/navigation';
 import Editor from '@monaco-editor/react';
 import { API_URL } from '@/lib/api';
 
+const TRANSLATION_LANGS = [
+  { code: 'ky', label: 'Кыргызча', flag: '🇰🇬' },
+  { code: 'en', label: 'English', flag: '🇬🇧' },
+];
+
 export default function EditProblem() {
   const router = useRouter();
   const { id } = useParams();
@@ -25,6 +30,9 @@ export default function EditProblem() {
   const [newTest, setNewTest] = useState({ input: '', is_sample: false });
   const [addingTest, setAddingTest] = useState(false);
   const [shareEmail, setShareEmail] = useState('');
+  const [translations, setTranslations] = useState<Record<string, { title: string; description: string }>>({});
+  const [activeLang, setActiveLang] = useState('ky');
+  const [savingTranslation, setSavingTranslation] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -54,6 +62,14 @@ export default function EditProblem() {
           share_token: data.share_token || ''
         });
         setTestCases(data.test_cases || []);
+        // Load existing translations
+        if (data.translations) {
+          const tMap: Record<string, { title: string; description: string }> = {};
+          for (const t of data.translations) {
+            tMap[t.language_code] = { title: t.title, description: t.description };
+          }
+          setTranslations(tMap);
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -167,6 +183,53 @@ export default function EditProblem() {
       } else {
         const data = await res.json();
         alert(data.error || 'Ошибка');
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleSaveTranslation = async (langCode: string) => {
+    const t = translations[langCode];
+    if (!t?.title || !t?.description) {
+      alert('Аталышты жана сүрөттөмөнү толтуруңуз');
+      return;
+    }
+    setSavingTranslation(true);
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_URL}/problems/${id}/translations/${langCode}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ title: t.title, description: t.description })
+      });
+      if (res.ok) {
+        alert('Котормо сакталды!');
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Ката');
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setSavingTranslation(false);
+    }
+  };
+
+  const handleDeleteTranslation = async (langCode: string) => {
+    if (!confirm('Котормону өчүрүү?')) return;
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_URL}/problems/${id}/translations/${langCode}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setTranslations(prev => {
+          const next = { ...prev };
+          delete next[langCode];
+          return next;
+        });
       }
     } catch (error) {
       console.error(error);
@@ -322,6 +385,64 @@ export default function EditProblem() {
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Translations */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Котормолор / Переводы</h3>
+            <p className="text-xs text-gray-500 mb-4">Негизги тил (орусча) жогорудагы формада. Башка тилдерди ылдый кошуңуз.</p>
+            <div className="flex gap-2 mb-4">
+              {TRANSLATION_LANGS.map(l => (
+                <button
+                  key={l.code}
+                  onClick={() => setActiveLang(l.code)}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium border transition ${activeLang === l.code ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'}`}
+                >
+                  {l.flag} {l.label} {translations[l.code] ? '✓' : ''}
+                </button>
+              ))}
+            </div>
+            {TRANSLATION_LANGS.filter(l => l.code === activeLang).map(l => (
+              <div key={l.code} className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Аталышы ({l.label})</label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2"
+                    value={translations[l.code]?.title || ''}
+                    onChange={e => setTranslations(prev => ({ ...prev, [l.code]: { ...prev[l.code], title: e.target.value, description: prev[l.code]?.description || '' } }))}
+                    placeholder={`Аталышын ${l.label} тилинде жазыңыз`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Сүрөттөмөсү ({l.label})</label>
+                  <textarea
+                    rows={6}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2 font-mono text-sm"
+                    value={translations[l.code]?.description || ''}
+                    onChange={e => setTranslations(prev => ({ ...prev, [l.code]: { title: prev[l.code]?.title || '', description: e.target.value } }))}
+                    placeholder={`Сүрөттөмөсүн ${l.label} тилинде жазыңыз (Markdown колдоолонот)`}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleSaveTranslation(l.code)}
+                    disabled={savingTranslation}
+                    className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {savingTranslation ? 'Сакталууда...' : `${l.flag} ${l.label} котормосун сактоо`}
+                  </button>
+                  {translations[l.code] && (
+                    <button
+                      onClick={() => handleDeleteTranslation(l.code)}
+                      className="text-red-600 border border-red-300 px-3 py-2 rounded text-sm hover:bg-red-50"
+                    >
+                      Өчүрүү
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Author Solution Editor */}

@@ -8,6 +8,7 @@ import (
 	"onlineJudge/backend/app/models"
 	"onlineJudge/backend/database"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -91,16 +92,30 @@ func GoogleCallback(c *fiber.Ctx) error {
 	}
 	json.Unmarshal(content, &gUser)
 
+	adminEmails := map[string]bool{}
+	for _, e := range strings.Split(os.Getenv("ADMIN_EMAILS"), ",") {
+		if trimmed := strings.TrimSpace(e); trimmed != "" {
+			adminEmails[trimmed] = true
+		}
+	}
+
 	var user models.User
 	result := database.DB.Where("email = ?", gUser.Email).First(&user)
 
 	if result.Error != nil {
+		role := "user"
+		if adminEmails[gUser.Email] {
+			role = "admin"
+		}
 		user = models.User{
 			Name:  gUser.Name,
 			Email: gUser.Email,
-			Role:  "user",
+			Role:  role,
 		}
 		database.DB.Create(&user)
+	} else if adminEmails[gUser.Email] && user.Role != "admin" {
+		user.Role = "admin"
+		database.DB.Save(&user)
 	}
 
 	// Update Problem Access (Link pending shares to this user ID)

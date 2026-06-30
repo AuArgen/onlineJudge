@@ -198,6 +198,7 @@ function ProblemDetailContent() {
   const { id } = useParams();
   const searchParams = useSearchParams();
   const contestId = searchParams.get('contest_id');
+  const shareToken = searchParams.get('token');
   const { showToast } = useToast();
   const router = useRouter();
   const { lang, setLang } = useLanguage();
@@ -238,13 +239,14 @@ function ProblemDetailContent() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
-    fetch(`${API_URL}/problems/${id}?lang=${lang}`, { headers })
+    const tokenParam = shareToken ? `&token=${shareToken}` : '';
+    fetch(`${API_URL}/problems/${id}?lang=${lang}${tokenParam}`, { headers })
       .then((res) => res.json())
       .then(setProblem)
       .catch(console.error);
 
     fetchHistory();
-  }, [id, lang]);
+  }, [id, lang, shareToken]);
 
   useEffect(() => {
     if (cooldown > 0) {

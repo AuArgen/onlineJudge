@@ -19,8 +19,8 @@ export default function CreateProblem() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createProblem(formData);
-      router.push('/profile'); // Redirect to profile to see the new problem
+      const problem = await createProblem(formData);
+      router.push(`/problems/${problem.id}/edit`);
     } catch (error) {
       alert('Error creating problem');
     }
