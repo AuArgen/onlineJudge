@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { useLanguage, LANGUAGES } from '@/contexts/LanguageContext';
@@ -20,9 +21,14 @@ export default function Navbar() {
           {/* Logo & Links */}
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg group-hover:bg-blue-700 transition-colors">
-                &lt;/&gt;
-              </div>
+              <Image
+                src="/logo.svg"
+                alt="Online Judge Logo"
+                width={36}
+                height={36}
+                className="rounded-lg group-hover:opacity-90 transition-opacity"
+                priority
+              />
               <span className="font-bold text-xl text-gray-900 tracking-tight group-hover:text-blue-600 transition-colors">
                 Online Judge
               </span>

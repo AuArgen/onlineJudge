@@ -9,8 +9,14 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Online Judge",
-  description: "Platform for coding problems",
+  title: {
+    default: "Online Judge",
+    template: "%s | Online Judge",
+  },
+  description: "Алгоритмдик маселелерди чечүү, программалоо тилдерин үйрөнүү жана IT-гиганттарга техникалык интервьюга даярданыңыз.",
+  icons: {
+    icon: "/logo.svg",
+  },
 };
 
 export default function RootLayout({
