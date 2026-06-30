@@ -14,7 +14,7 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
       - JWT_SECRET=${JWT_SECRET}
-      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - ADMIN_EMAILS=${ADMIN_EMAILS}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
