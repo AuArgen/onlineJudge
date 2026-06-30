@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic';
 export default async function Home() {
   let problems = [];
   try {
-    problems = await getProblems();
+    const result = await getProblems();
+    problems = Array.isArray(result) ? result : (result.data ?? []);
   } catch (e) {
     console.error(e);
   }

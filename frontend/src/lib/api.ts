@@ -25,20 +25,24 @@ function getAuthHeaders() {
   return headers;
 }
 
-export async function getProblems() {
-  const url = `${getBaseUrl()}/problems`;
-  console.log('Fetching problems from:', url); // Debug log
-  
-  const res = await fetch(url, {
+export async function getProblems(params?: Record<string, string>) {
+  const url = new URL(`${getBaseUrl()}/problems`);
+  if (params) {
+    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  }
+  console.log('Fetching problems from:', url.toString());
+
+  const res = await fetch(url.toString(), {
     cache: 'no-store',
     headers: getAuthHeaders(),
   });
-  
+
   if (!res.ok) {
     throw new Error(`Failed to fetch problems: ${res.statusText}`);
   }
-  
-  return res.json();
+
+  const data = await res.json();
+  return data;
 }
 
 export async function createProblem(data: any) {
