@@ -7,7 +7,7 @@ import { API_URL } from '@/lib/api';
 function HistoryContent() {
   const searchParams = useSearchParams();
   const problemId = searchParams.get('id');
-  const [submissions, setSubmissions] = useState([]);
+  const [submissions, setSubmissions] = useState<any[]>([]);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
 
   useEffect(() => {

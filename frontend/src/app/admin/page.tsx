@@ -7,7 +7,7 @@ import { API_URL } from '@/lib/api';
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const [problems, setProblems] = useState([]);
+  const [problems, setProblems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

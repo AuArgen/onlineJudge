@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { API_URL } from '@/lib/api';
 
 export default function Leaderboard() {
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

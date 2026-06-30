@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 
 export default function Contests() {
-  const [contests, setContests] = useState([]);
+  const [contests, setContests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

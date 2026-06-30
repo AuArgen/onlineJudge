@@ -7,8 +7,8 @@ import { API_URL } from '@/lib/api';
 
 export default function Dashboard() {
   const router = useRouter();
-  const [problems, setProblems] = useState([]);
-  const [contests, setContests] = useState([]);
+  const [problems, setProblems] = useState<any[]>([]);
+  const [contests, setContests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'problems' | 'contests'>('problems');
