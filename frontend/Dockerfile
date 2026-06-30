@@ -24,6 +24,10 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 # We rely on docker-compose shm_size: '2gb' to avoid Bus Error
 RUN npm run build
 
+# Copy static assets into standalone output (required for standalone mode)
+RUN cp -r .next/static .next/standalone/.next/static && \
+    cp -r public .next/standalone/public
+
 EXPOSE 3000
 
 CMD ["node", ".next/standalone/server.js"]
