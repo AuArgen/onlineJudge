@@ -45,15 +45,25 @@ export default function Navbar() {
               >
                 Задачи
               </Link>
-              <Link 
-                href="/contests" 
+              <Link
+                href="/contests"
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive('/contests') 
-                    ? 'bg-blue-50 text-blue-700' 
+                  isActive('/contests')
+                    ? 'bg-blue-50 text-blue-700'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
                 Соревнования
+              </Link>
+              <Link
+                href="/topics"
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  pathname.startsWith('/topics')
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                Темалар
               </Link>
               <Link 
                 href="/leaderboard" 

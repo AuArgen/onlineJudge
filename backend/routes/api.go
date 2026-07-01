@@ -24,6 +24,9 @@ func SetupRoutes(app *fiber.App) {
 	api.Get("/contests/:id", controllers.GetContest)
 	api.Get("/contests/:id/leaderboard", controllers.GetContestLeaderboard)
 
+	// Topics (Public) - shared token access (no auth required)
+	api.Get("/topics/shared/:token", controllers.GetTopicByToken)
+
 	// Protected Routes
 	api.Use(middleware.AuthRequired)
 	api.Post("/problems", controllers.CreateProblem)
@@ -55,6 +58,30 @@ func SetupRoutes(app *fiber.App) {
 	api.Post("/contests/:id/problems", controllers.AddProblemToContest)
 	api.Delete("/contests/:id/problems/:problem_id", controllers.RemoveProblemFromContest)
 	api.Post("/contests/:id/join", controllers.JoinContest)
+
+	// Topic Routes (protected)
+	api.Get("/topics", controllers.GetTopics)
+	api.Post("/topics", controllers.CreateTopic)
+	api.Get("/topics/:id", controllers.GetTopic)
+	api.Put("/topics/:id", controllers.UpdateTopic)
+	api.Delete("/topics/:id", controllers.DeleteTopic)
+
+	// Topic content blocks
+	api.Post("/topics/:id/contents", controllers.AddContent)
+	api.Put("/topics/:id/contents/:content_id", controllers.UpdateContent)
+	api.Delete("/topics/:id/contents/:content_id", controllers.DeleteContent)
+
+	// Topic problems
+	api.Post("/topics/:id/problems", controllers.AddTopicProblem)
+	api.Delete("/topics/:id/problems/:problem_id", controllers.RemoveTopicProblem)
+
+	// Topic sharing & access
+	api.Post("/topics/:id/share", controllers.ShareTopicByEmail)
+	api.Delete("/topics/:id/access/:access_id", controllers.RevokeTopicAccess)
+	api.Post("/topics/:id/share-token", controllers.GenerateTopicShareToken)
+
+	// Topic analytics
+	api.Get("/topics/:id/analytics", controllers.GetTopicAnalytics)
 
 	// Admin Routes
 	admin := api.Group("/admin")

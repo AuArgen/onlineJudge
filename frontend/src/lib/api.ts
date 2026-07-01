@@ -62,3 +62,153 @@ export async function createProblem(data: any) {
 
   return res.json();
 }
+
+// ---- Topics ----
+
+export async function getTopics(filter?: string) {
+  const url = new URL(`${getBaseUrl()}/topics`);
+  if (filter) url.searchParams.set('filter', filter);
+  const res = await fetch(url.toString(), { headers: getAuthHeaders() });
+  if (!res.ok) throw new Error('Failed to fetch topics');
+  return res.json();
+}
+
+export async function createTopic(data: { title: string; visibility: string; parent_id?: number | null }) {
+  const res = await fetch(`${getBaseUrl()}/topics`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to create topic');
+  }
+  return res.json();
+}
+
+export async function getTopic(id: number | string) {
+  const res = await fetch(`${getBaseUrl()}/topics/${id}`, { headers: getAuthHeaders() });
+  if (!res.ok) throw new Error('Topic not found');
+  return res.json();
+}
+
+export async function getTopicByToken(token: string) {
+  const res = await fetch(`${getBaseUrl()}/topics/shared/${token}`, { headers: getAuthHeaders() });
+  if (!res.ok) throw new Error('Topic not found');
+  return res.json();
+}
+
+export async function updateTopic(id: number | string, data: { title?: string; visibility?: string }) {
+  const res = await fetch(`${getBaseUrl()}/topics/${id}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to update topic');
+  return res.json();
+}
+
+export async function deleteTopic(id: number | string) {
+  const res = await fetch(`${getBaseUrl()}/topics/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to delete topic');
+  return res.json();
+}
+
+export async function addTopicContent(topicId: number | string, data: { type: string; content: string; caption?: string; order_num?: number }) {
+  const res = await fetch(`${getBaseUrl()}/topics/${topicId}/contents`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to add content');
+  }
+  return res.json();
+}
+
+export async function updateTopicContent(topicId: number | string, contentId: number, data: { content?: string; caption?: string; order_num?: number }) {
+  const res = await fetch(`${getBaseUrl()}/topics/${topicId}/contents/${contentId}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to update content');
+  }
+  return res.json();
+}
+
+export async function deleteTopicContent(topicId: number | string, contentId: number) {
+  const res = await fetch(`${getBaseUrl()}/topics/${topicId}/contents/${contentId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to delete content');
+  return res.json();
+}
+
+export async function addTopicProblem(topicId: number | string, problemId: number) {
+  const res = await fetch(`${getBaseUrl()}/topics/${topicId}/problems`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ problem_id: problemId }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to add problem');
+  }
+  return res.json();
+}
+
+export async function removeTopicProblem(topicId: number | string, problemId: number) {
+  const res = await fetch(`${getBaseUrl()}/topics/${topicId}/problems/${problemId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to remove problem');
+  return res.json();
+}
+
+export async function shareTopicByEmail(topicId: number | string, email: string) {
+  const res = await fetch(`${getBaseUrl()}/topics/${topicId}/share`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to share topic');
+  }
+  return res.json();
+}
+
+export async function revokeTopicAccess(topicId: number | string, accessId: number) {
+  const res = await fetch(`${getBaseUrl()}/topics/${topicId}/access/${accessId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to revoke access');
+  return res.json();
+}
+
+export async function generateTopicShareToken(topicId: number | string) {
+  const res = await fetch(`${getBaseUrl()}/topics/${topicId}/share-token`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to generate share token');
+  return res.json();
+}
+
+export async function getTopicAnalytics(topicId: number | string) {
+  const res = await fetch(`${getBaseUrl()}/topics/${topicId}/analytics`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch analytics');
+  return res.json();
+}
