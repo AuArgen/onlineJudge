@@ -4,17 +4,19 @@ import { useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { API_URL } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 function CallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const code = searchParams.get('code');
   const { login } = useAuth();
-  const hasFetched = useRef(false); // Prevent double fetch in Strict Mode
+  const { t } = useLanguage();
+  const hasFetched = useRef(false);
 
   useEffect(() => {
     if (code && !hasFetched.current) {
-      hasFetched.current = true; // Mark as fetched immediately
+      hasFetched.current = true;
 
       fetch(`${API_URL}/auth/google/callback`, {
         method: 'POST',
@@ -26,8 +28,6 @@ function CallbackContent() {
           if (data.token) {
             login(data.token, data.user);
           } else {
-            // Only alert if it's a real error, not a duplicate request error
-            // But here we can't easily distinguish without checking error message
             console.error('Login failed:', data);
             alert('Login failed: ' + (data.error || 'Unknown error'));
             router.push('/auth/login');
@@ -43,14 +43,14 @@ function CallbackContent() {
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="text-xl">Авторизация...</div>
+      <div className="text-xl">{t('auth.authorizing')}</div>
     </div>
   );
 }
 
 export default function Callback() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="text-xl">Loading...</div></div>}>
       <CallbackContent />
     </Suspense>
   );

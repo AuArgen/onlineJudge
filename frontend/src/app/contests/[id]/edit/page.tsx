@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { API_URL } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function EditContest() {
   const { id } = useParams();
   const router = useRouter();
+  const { t } = useLanguage();
   const [contest, setContest] = useState<any>(null);
   const [problemId, setProblemId] = useState('');
   const [saving, setSaving] = useState(false);
@@ -58,9 +60,9 @@ export default function EditContest() {
       if (res.ok) {
         const updated = await res.json();
         setContest(updated);
-        alert('Сохранено!');
+        alert(t('editContest.saveSuccess'));
       } else {
-        alert('Ошибка при сохранении');
+        alert(t('editContest.saveError'));
       }
     } finally {
       setSaving(false);
@@ -84,30 +86,30 @@ export default function EditContest() {
       }).then(r => r.json());
       setContest(updated);
     } else {
-      alert('Ошибка при добавлении задачи');
+      alert(t('editContest.addError'));
     }
   };
 
-  if (!contest) return <div className="p-10 text-center">Загрузка...</div>;
+  if (!contest) return <div className="p-10 text-center">{t('editContest.loading')}</div>;
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-4 space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Редактировать соревнование</h1>
+        <h1 className="text-3xl font-bold">{t('editContest.title')}</h1>
         <button
           onClick={() => router.push(`/contests/${id}`)}
           className="text-sm text-gray-500 hover:text-gray-700"
         >
-          ← Назад
+          {t('editContest.back')}
         </button>
       </div>
 
       {/* Main fields */}
       <div className="bg-white shadow rounded-lg p-6 space-y-4">
-        <h2 className="text-lg font-bold mb-2">Основная информация</h2>
+        <h2 className="text-lg font-bold mb-2">{t('editContest.mainInfo')}</h2>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Название</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('editContest.name')}</label>
           <input
             type="text"
             className="w-full border rounded-lg p-2"
@@ -117,7 +119,7 @@ export default function EditContest() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('editContest.description')}</label>
           <textarea
             className="w-full border rounded-lg p-2 h-28 resize-none"
             value={form.description}
@@ -127,7 +129,7 @@ export default function EditContest() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Начало</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('editContest.start')}</label>
             <input
               type="datetime-local"
               className="w-full border rounded-lg p-2"
@@ -136,7 +138,7 @@ export default function EditContest() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Конец</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('editContest.end')}</label>
             <input
               type="datetime-local"
               className="w-full border rounded-lg p-2"
@@ -148,26 +150,26 @@ export default function EditContest() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Видимость</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('editContest.visibility')}</label>
             <select
               className="w-full border rounded-lg p-2"
               value={form.visibility}
               onChange={e => setForm({ ...form, visibility: e.target.value })}
             >
-              <option value="public">Публичный</option>
-              <option value="private">Приватный</option>
+              <option value="public">{t('editContest.public')}</option>
+              <option value="private">{t('editContest.private')}</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Статус</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('editContest.status')}</label>
             <select
               className="w-full border rounded-lg p-2"
               value={form.status}
               onChange={e => setForm({ ...form, status: e.target.value })}
             >
-              <option value="draft">Черновик</option>
-              <option value="published">Опубликован</option>
-              <option value="finished">Завершен</option>
+              <option value="draft">{t('editContest.draft')}</option>
+              <option value="published">{t('editContest.published')}</option>
+              <option value="finished">{t('editContest.finished')}</option>
             </select>
           </div>
         </div>
@@ -177,16 +179,16 @@ export default function EditContest() {
           disabled={saving}
           className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50"
         >
-          {saving ? 'Сохранение...' : 'Сохранить'}
+          {saving ? t('editContest.saving') : t('editContest.save')}
         </button>
       </div>
 
       {/* Problems */}
       <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-lg font-bold mb-4">Задачи соревнования</h2>
+        <h2 className="text-lg font-bold mb-4">{t('editContest.problems')}</h2>
         <ul className="divide-y mb-6">
           {contest.problems?.length === 0 && (
-            <li className="py-3 text-gray-400 text-sm">Задач ещё нет</li>
+            <li className="py-3 text-gray-400 text-sm">{t('editContest.noProblems')}</li>
           )}
           {contest.problems?.map((p: any, i: number) => (
             <li key={p.id} className="py-3 flex items-center gap-3">
@@ -197,7 +199,7 @@ export default function EditContest() {
               <span className="text-xs text-gray-400 ml-1">ID: {p.problem_id}</span>
               <button
                 onClick={async () => {
-                  if (!confirm('Удалить задачу из соревнования?')) return;
+                  if (!confirm(t('editContest.confirmRemove'))) return;
                   const res = await fetch(`${API_URL}/contests/${id}/problems/${p.problem_id}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -211,7 +213,7 @@ export default function EditContest() {
                 }}
                 className="ml-auto text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded transition"
               >
-                Удалить
+                {t('editContest.removeProblem')}
               </button>
             </li>
           ))}
@@ -220,7 +222,7 @@ export default function EditContest() {
         <div className="flex gap-3">
           <input
             type="number"
-            placeholder="ID задачи"
+            placeholder={t('editContest.problemId')}
             className="border rounded-lg p-2 w-40"
             value={problemId}
             onChange={(e) => setProblemId(e.target.value)}
@@ -229,7 +231,7 @@ export default function EditContest() {
             onClick={handleAddProblem}
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold"
           >
-            Добавить задачу
+            {t('editContest.addProblem')}
           </button>
         </div>
       </div>

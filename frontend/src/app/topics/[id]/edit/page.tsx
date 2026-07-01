@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getTopic, updateTopic } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function EditTopicPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { t } = useLanguage();
 
   const [title, setTitle] = useState('');
   const [visibility, setVisibility] = useState<'private' | 'public'>('private');
@@ -21,27 +23,27 @@ export default function EditTopicPage() {
         setTitle(d.topic.title);
         setVisibility(d.topic.visibility);
       })
-      .catch(() => setError('Тема табылган жок'))
+      .catch(() => setError(t('topicForm.notFound')))
       .finally(() => setLoading(false));
   }, [id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) { setError('Аталышты киргизиңиз'); return; }
+    if (!title.trim()) { setError(t('topicForm.nameRequired')); return; }
     setSaving(true);
     setError('');
     try {
       await updateTopic(id, { title: title.trim(), visibility });
       router.push(`/topics/${id}`);
     } catch (err: any) {
-      setError(err.message || 'Ката чыкты');
+      setError(err.message || t('topicForm.error'));
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <div className="text-center py-20 text-gray-400">Жүктөлүп жатат...</div>;
+    return <div className="text-center py-20 text-gray-400">{t('topicForm.loadingTopic')}</div>;
   }
 
   return (
@@ -50,15 +52,15 @@ export default function EditTopicPage() {
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
-        Темага кайтуу
+        {t('topicForm.backToTopic')}
       </Link>
 
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Теманы өзгөртүү</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('topicForm.editTitle')}</h1>
 
       <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Аталышы <span className="text-red-500">*</span>
+            {t('topicForm.name')} <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -69,11 +71,11 @@ export default function EditTopicPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Жеткиликтүүлүк</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t('topicForm.visibility')}</label>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { key: 'private', label: 'Жашыруун', desc: 'Ссылка же email менен', icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' },
-              { key: 'public', label: 'Жалпы', desc: 'Бардыгы көрө алат', icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+              { key: 'private', label: t('topicForm.private'), desc: t('topicForm.privateDesc'), icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' },
+              { key: 'public', label: t('topicForm.public'), desc: t('topicForm.publicDesc'), icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
             ].map((opt) => (
               <button
                 key={opt.key}
@@ -107,13 +109,13 @@ export default function EditTopicPage() {
             disabled={saving}
             className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-medium py-2.5 rounded-lg transition"
           >
-            {saving ? 'Сакталып жатат...' : 'Сактоо'}
+            {saving ? t('topicForm.saving') : t('topicForm.saveBtn')}
           </button>
           <Link
             href={`/topics/${id}`}
             className="px-5 py-2.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition text-sm font-medium"
           >
-            Жокко чыгаруу
+            {t('topicForm.cancel')}
           </Link>
         </div>
       </form>

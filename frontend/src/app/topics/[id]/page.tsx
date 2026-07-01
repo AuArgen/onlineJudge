@@ -9,6 +9,7 @@ import {
   createTopic, getTopicAnalytics, getProblems,
 } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 function YouTubeEmbed({ src, caption }: { src: string; caption?: string }) {
   return (
@@ -63,25 +64,17 @@ function ContentBlock({ block }: { block: any }) {
   }
 }
 
-const CONTENT_TYPES = [
-  { key: 'text', label: 'Текст', icon: '📝' },
-  { key: 'image', label: 'Сүрөт', icon: '🖼️' },
-  { key: 'video', label: 'YouTube видео', icon: '▶️' },
-  { key: 'link', label: 'Шилтеме', icon: '🔗' },
-];
-
 export default function TopicDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Tabs
   const [activeTab, setActiveTab] = useState<'overview' | 'problems' | 'analytics' | 'share'>('overview');
 
-  // Add content modal
   const [showAddContent, setShowAddContent] = useState(false);
   const [contentType, setContentType] = useState('text');
   const [contentValue, setContentValue] = useState('');
@@ -89,27 +82,30 @@ export default function TopicDetailPage() {
   const [contentError, setContentError] = useState('');
   const [contentLoading, setContentLoading] = useState(false);
 
-  // Add subtopic modal
   const [showAddSubtopic, setShowAddSubtopic] = useState(false);
   const [subtopicTitle, setSubtopicTitle] = useState('');
   const [subtopicVis, setSubtopicVis] = useState<'private' | 'public'>('private');
   const [subtopicLoading, setSubtopicLoading] = useState(false);
 
-  // Add problem panel
   const [showAddProblem, setShowAddProblem] = useState(false);
   const [problemSearch, setProblemSearch] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
-  // Share
   const [shareToken, setShareToken] = useState('');
   const [shareEmail, setShareEmail] = useState('');
   const [shareLoading, setShareLoading] = useState(false);
   const [shareMsg, setShareMsg] = useState('');
 
-  // Analytics
   const [analytics, setAnalytics] = useState<any[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  const CONTENT_TYPES = [
+    { key: 'text', label: t('topicDetail.contentText'), icon: '📝' },
+    { key: 'image', label: t('topicDetail.contentImage'), icon: '🖼️' },
+    { key: 'video', label: t('topicDetail.contentVideo'), icon: '▶️' },
+    { key: 'link', label: t('topicDetail.contentLink'), icon: '🔗' },
+  ];
 
   const load = useCallback(() => {
     setLoading(true);
@@ -118,7 +114,7 @@ export default function TopicDetailPage() {
         setData(d);
         if (d.topic?.share_token) setShareToken(d.topic.share_token);
       })
-      .catch(() => setError('Тема табылган жок'))
+      .catch(() => setError(t('topicDetail.topics')))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -128,10 +124,9 @@ export default function TopicDetailPage() {
   const isAdmin = user?.role === 'admin';
   const canEdit = isOwner || isAdmin;
 
-  // Content handlers
   const handleAddContent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!contentValue.trim()) { setContentError('Мазмун бош болбосун'); return; }
+    if (!contentValue.trim()) { setContentError(t('topicDetail.contentEmpty')); return; }
     setContentError('');
     setContentLoading(true);
     try {
@@ -139,19 +134,18 @@ export default function TopicDetailPage() {
       setContentValue(''); setContentCaption(''); setShowAddContent(false);
       load();
     } catch (err: any) {
-      setContentError(err.message || 'Ката чыкты');
+      setContentError(err.message || t('topicForm.error'));
     } finally {
       setContentLoading(false);
     }
   };
 
   const handleDeleteContent = async (contentId: number) => {
-    if (!confirm('Бул блокту өчүрөсүзбү?')) return;
+    if (!confirm(t('topicDetail.confirmDeleteContent'))) return;
     await deleteTopicContent(id, contentId);
     load();
   };
 
-  // Subtopic handler
   const handleAddSubtopic = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subtopicTitle.trim()) return;
@@ -161,23 +155,22 @@ export default function TopicDetailPage() {
       setSubtopicTitle(''); setShowAddSubtopic(false);
       load();
     } catch (err: any) {
-      alert(err.message || 'Ката');
+      alert(err.message || t('topicForm.error'));
     } finally {
       setSubtopicLoading(false);
     }
   };
 
-  // Problem search
   useEffect(() => {
     if (!showAddProblem || !problemSearch.trim()) { setSearchResults([]); return; }
-    const t = setTimeout(() => {
+    const timeout = setTimeout(() => {
       setSearchLoading(true);
       getProblems({ search: problemSearch })
         .then((d) => setSearchResults(d.data || []))
         .catch(() => setSearchResults([]))
         .finally(() => setSearchLoading(false));
     }, 400);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timeout);
   }, [problemSearch, showAddProblem]);
 
   const handleAddProblem = async (problemId: number) => {
@@ -186,17 +179,16 @@ export default function TopicDetailPage() {
       setProblemSearch(''); setShowAddProblem(false);
       load();
     } catch (err: any) {
-      alert(err.message || 'Ката');
+      alert(err.message || t('topicForm.error'));
     }
   };
 
   const handleRemoveProblem = async (problemId: number) => {
-    if (!confirm('Задачаны темадан алып салуу?')) return;
+    if (!confirm(t('topicDetail.confirmRemoveProblem'))) return;
     await removeTopicProblem(id, problemId);
     load();
   };
 
-  // Share handlers
   const handleGenerateToken = async () => {
     const res = await generateTopicShareToken(id);
     setShareToken(res.share_token);
@@ -210,23 +202,22 @@ export default function TopicDetailPage() {
     setShareMsg('');
     try {
       await shareTopicByEmail(id, shareEmail.trim());
-      setShareMsg('Колдонуучуга кирүү берилди!');
+      setShareMsg(t('topicDetail.accessGranted'));
       setShareEmail('');
       load();
     } catch (err: any) {
-      setShareMsg(err.message || 'Ката');
+      setShareMsg(err.message || t('topicForm.error'));
     } finally {
       setShareLoading(false);
     }
   };
 
   const handleRevokeAccess = async (accessId: number) => {
-    if (!confirm('Кирүүнү өчүрөсүзбү?')) return;
+    if (!confirm(t('topicDetail.confirmRevokeAccess'))) return;
     await revokeTopicAccess(id, accessId);
     load();
   };
 
-  // Analytics
   const loadAnalytics = useCallback(() => {
     setAnalyticsLoading(true);
     getTopicAnalytics(id)
@@ -240,13 +231,13 @@ export default function TopicDetailPage() {
   }, [activeTab, loadAnalytics]);
 
   if (loading) {
-    return <div className="text-center py-20 text-gray-400">Жүктөлүп жатат...</div>;
+    return <div className="text-center py-20 text-gray-400">{t('topicDetail.loading')}</div>;
   }
   if (error || !data) {
     return (
       <div className="text-center py-20">
-        <p className="text-red-500 text-lg">{error || 'Тема табылган жок'}</p>
-        <Link href="/topics" className="text-blue-600 hover:underline mt-4 inline-block">Темаларга кайтуу</Link>
+        <p className="text-red-500 text-lg">{error || t('topicDetail.topics')}</p>
+        <Link href="/topics" className="text-blue-600 hover:underline mt-4 inline-block">{t('topicForm.backToTopics')}</Link>
       </div>
     );
   }
@@ -254,7 +245,6 @@ export default function TopicDetailPage() {
   const { topic, problems } = data;
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/topics/shared/${shareToken}` : '';
 
-  // Group analytics by user
   const analyticsUsers: Record<string, any> = {};
   analytics.forEach((s: any) => {
     if (!analyticsUsers[s.user_id]) {
@@ -268,7 +258,7 @@ export default function TopicDetailPage() {
     <div className="max-w-5xl mx-auto py-8 px-4">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-        <Link href="/topics" className="hover:text-gray-900">Темалар</Link>
+        <Link href="/topics" className="hover:text-gray-900">{t('topicDetail.topics')}</Link>
         {topic.parent_id && (
           <>
             <span>/</span>
@@ -290,7 +280,7 @@ export default function TopicDetailPage() {
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                 topic.visibility === 'public' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'
               }`}>
-                {topic.visibility === 'public' ? 'Жалпы' : 'Жашыруун'}
+                {topic.visibility === 'public' ? t('topicDetail.public') : t('topicDetail.private')}
               </span>
             </div>
           </div>
@@ -303,7 +293,7 @@ export default function TopicDetailPage() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
-            Өзгөртүү
+            {t('topicDetail.edit')}
           </Link>
         )}
       </div>
@@ -311,11 +301,11 @@ export default function TopicDetailPage() {
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200 mb-6">
         {[
-          { key: 'overview', label: 'Мазмун' },
-          { key: 'problems', label: `Задачалар (${problems?.length || 0})` },
+          { key: 'overview', label: t('topicDetail.tabOverview') },
+          { key: 'problems', label: `${t('topicDetail.tabProblems')} (${problems?.length || 0})` },
           ...(canEdit ? [
-            { key: 'share', label: 'Бөлүшүү' },
-            { key: 'analytics', label: 'Аналитика' },
+            { key: 'share', label: t('topicDetail.tabShare') },
+            { key: 'analytics', label: t('topicDetail.tabAnalytics') },
           ] : []),
         ].map((tab) => (
           <button
@@ -335,7 +325,6 @@ export default function TopicDetailPage() {
       {/* TAB: Overview */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          {/* Content blocks */}
           {topic.contents && topic.contents.length > 0 ? (
             <div className="space-y-4">
               {[...topic.contents]
@@ -344,13 +333,13 @@ export default function TopicDetailPage() {
                   <div key={block.id} className="bg-white border border-gray-200 rounded-xl p-5 group relative">
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
-                        {CONTENT_TYPES.find(t => t.key === block.type)?.icon} {CONTENT_TYPES.find(t => t.key === block.type)?.label}
+                        {CONTENT_TYPES.find(ct => ct.key === block.type)?.icon} {CONTENT_TYPES.find(ct => ct.key === block.type)?.label}
                       </span>
                       {canEdit && (
                         <button
                           onClick={() => handleDeleteContent(block.id)}
                           className="ml-auto opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition p-1 rounded"
-                          title="Өчүрүү"
+                          title={t('topicDetail.deleteBtn')}
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -363,10 +352,9 @@ export default function TopicDetailPage() {
                 ))}
             </div>
           ) : (
-            !canEdit && <p className="text-gray-400 text-center py-8">Мазмун жок</p>
+            !canEdit && <p className="text-gray-400 text-center py-8">{t('topicDetail.noContent')}</p>
           )}
 
-          {/* Add content button */}
           {canEdit && (
             <button
               onClick={() => setShowAddContent(true)}
@@ -375,14 +363,13 @@ export default function TopicDetailPage() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Мазмун кошуу
+              {t('topicDetail.addContent')}
             </button>
           )}
 
-          {/* Subtopics */}
           {topic.children && topic.children.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Подтемалар</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">{t('topicDetail.subtopics')}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {topic.children.map((child: any) => (
                   <Link
@@ -398,7 +385,6 @@ export default function TopicDetailPage() {
             </div>
           )}
 
-          {/* Add subtopic */}
           {canEdit && (
             <button
               onClick={() => setShowAddSubtopic(true)}
@@ -407,7 +393,7 @@ export default function TopicDetailPage() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Подтема кошуу
+              {t('topicDetail.addSubtopic')}
             </button>
           )}
         </div>
@@ -422,8 +408,8 @@ export default function TopicDetailPage() {
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">#</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Задача</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Статус</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('topicDetail.problem')}</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('topicDetail.statusCol')}</th>
                     {canEdit && <th className="w-10" />}
                   </tr>
                 </thead>
@@ -438,10 +424,10 @@ export default function TopicDetailPage() {
                             href={`/problems/${tp.problem_id}`}
                             className="font-medium text-gray-900 hover:text-blue-600 transition text-sm"
                           >
-                            {tp.problem?.title || `Задача #${tp.problem_id}`}
+                            {tp.problem?.title || `#${tp.problem_id}`}
                           </Link>
                           {tp.problem?.visibility === 'public' && (
-                            <span className="ml-2 text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">жалпы</span>
+                            <span className="ml-2 text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">{t('topicDetail.public2')}</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-center">
@@ -450,7 +436,7 @@ export default function TopicDetailPage() {
                               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                               </svg>
-                              Чыгарылды
+                              {t('topicDetail.solved')}
                             </span>
                           ) : (
                             <span className="text-xs text-gray-400">—</span>
@@ -461,7 +447,7 @@ export default function TopicDetailPage() {
                             <button
                               onClick={() => handleRemoveProblem(tp.problem_id)}
                               className="text-gray-300 hover:text-red-500 transition p-1 rounded"
-                              title="Алып салуу"
+                              title={t('topicDetail.remove')}
                             >
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -476,7 +462,7 @@ export default function TopicDetailPage() {
             </div>
           ) : (
             <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-              <p className="text-gray-400 text-sm">Задачалар жок</p>
+              <p className="text-gray-400 text-sm">{t('topicDetail.noProblems')}</p>
             </div>
           )}
 
@@ -489,7 +475,7 @@ export default function TopicDetailPage() {
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                Задача кошуу
+                {t('topicDetail.addProblem')}
               </button>
               {showAddProblem && (
                 <div className="mt-2 bg-white border border-gray-200 rounded-xl shadow-lg p-4">
@@ -497,14 +483,14 @@ export default function TopicDetailPage() {
                     type="text"
                     value={problemSearch}
                     onChange={(e) => setProblemSearch(e.target.value)}
-                    placeholder="Задача аталышы боюнча издөө..."
+                    placeholder={t('topicDetail.searchProblem')}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     autoFocus
                   />
                   <div className="mt-2 max-h-48 overflow-y-auto">
-                    {searchLoading && <p className="text-xs text-gray-400 text-center py-2">Издөөдө...</p>}
+                    {searchLoading && <p className="text-xs text-gray-400 text-center py-2">{t('topicDetail.searching')}</p>}
                     {!searchLoading && searchResults.length === 0 && problemSearch && (
-                      <p className="text-xs text-gray-400 text-center py-2">Табылган жок</p>
+                      <p className="text-xs text-gray-400 text-center py-2">{t('topicDetail.notFound')}</p>
                     )}
                     {searchResults.map((p: any) => (
                       <button
@@ -533,7 +519,7 @@ export default function TopicDetailPage() {
               <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
               </svg>
-              Шилтеме аркылуу бөлүшүү
+              {t('topicDetail.shareLinkTitle')}
             </h3>
             {shareToken ? (
               <div>
@@ -547,14 +533,14 @@ export default function TopicDetailPage() {
                     onClick={() => navigator.clipboard.writeText(shareUrl)}
                     className="px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition"
                   >
-                    Көчүр
+                    {t('topicDetail.copyLink')}
                   </button>
                 </div>
                 <button
                   onClick={handleGenerateToken}
                   className="mt-2 text-xs text-gray-400 hover:text-gray-600 transition"
                 >
-                  Жаңы шилтеме жаса
+                  {t('topicDetail.generateNewLink')}
                 </button>
               </div>
             ) : (
@@ -562,7 +548,7 @@ export default function TopicDetailPage() {
                 onClick={handleGenerateToken}
                 className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition"
               >
-                Шилтеме жаса
+                {t('topicDetail.generateLink')}
               </button>
             )}
           </div>
@@ -573,7 +559,7 @@ export default function TopicDetailPage() {
               <svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              Email аркылуу бөлүшүү
+              {t('topicDetail.shareEmailTitle')}
             </h3>
             <form onSubmit={handleShareEmail} className="flex gap-2">
               <input
@@ -588,7 +574,7 @@ export default function TopicDetailPage() {
                 disabled={shareLoading}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-60 transition"
               >
-                {shareLoading ? '...' : 'Кошуу'}
+                {shareLoading ? '...' : t('topicDetail.addEmail')}
               </button>
             </form>
             {shareMsg && (
@@ -597,10 +583,9 @@ export default function TopicDetailPage() {
               </p>
             )}
 
-            {/* Access list */}
             {topic.access_list && topic.access_list.length > 0 && (
               <div className="mt-4 space-y-2">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Кирүү берилгендер</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('topicDetail.accessList')}</p>
                 {topic.access_list.map((a: any) => (
                   <div key={a.id} className="flex items-center justify-between py-1">
                     <span className="text-sm text-gray-700">{a.email}</span>
@@ -608,7 +593,7 @@ export default function TopicDetailPage() {
                       onClick={() => handleRevokeAccess(a.id)}
                       className="text-xs text-red-500 hover:text-red-700 transition"
                     >
-                      Алып салуу
+                      {t('topicDetail.revokeAccess')}
                     </button>
                   </div>
                 ))}
@@ -622,17 +607,17 @@ export default function TopicDetailPage() {
       {activeTab === 'analytics' && canEdit && (
         <div>
           {analyticsLoading ? (
-            <p className="text-center text-gray-400 py-8">Жүктөлүп жатат...</p>
+            <p className="text-center text-gray-400 py-8">{t('topicDetail.loading')}</p>
           ) : analytics.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-              <p className="text-gray-400">Маалымат жок. Колдонуучулар задачаларды чыгарганда бул жерде көрүнөт.</p>
+              <p className="text-gray-400">{t('topicDetail.analyticsEmpty')}</p>
             </div>
           ) : (
             <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Колдонуучу</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">{t('topicDetail.analyticsUser')}</th>
                     {analyticsProblemIds.map((pid: any) => {
                       const stat = analytics.find((s: any) => s.problem_id === pid);
                       return (
@@ -641,7 +626,7 @@ export default function TopicDetailPage() {
                         </th>
                       );
                     })}
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Жалпы</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">{t('topicDetail.analyticsTotal')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -694,7 +679,7 @@ export default function TopicDetailPage() {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Мазмун кошуу</h3>
+              <h3 className="font-semibold text-gray-900">{t('topicDetail.addContentModal')}</h3>
               <button onClick={() => { setShowAddContent(false); setContentError(''); }} className="text-gray-400 hover:text-gray-600">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -702,38 +687,36 @@ export default function TopicDetailPage() {
               </button>
             </div>
             <form onSubmit={handleAddContent} className="p-6 space-y-4">
-              {/* Type selector */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Түрү</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('topicDetail.contentType')}</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {CONTENT_TYPES.map((t) => (
+                  {CONTENT_TYPES.map((ct) => (
                     <button
-                      key={t.key}
+                      key={ct.key}
                       type="button"
-                      onClick={() => { setContentType(t.key); setContentValue(''); setContentError(''); }}
+                      onClick={() => { setContentType(ct.key); setContentValue(''); setContentError(''); }}
                       className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm transition ${
-                        contentType === t.key
+                        contentType === ct.key
                           ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
                           : 'border-gray-200 text-gray-600 hover:border-gray-300'
                       }`}
                     >
-                      <span>{t.icon}</span>{t.label}
+                      <span>{ct.icon}</span>{ct.label}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Content input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  {contentType === 'text' ? 'Текст' : contentType === 'image' ? 'Сүрөт URL' : contentType === 'video' ? 'YouTube URL' : 'Шилтеме URL'}
+                  {contentType === 'text' ? t('topicDetail.contentText') : contentType === 'image' ? t('topicDetail.contentImageUrl') : contentType === 'video' ? t('topicDetail.contentVideoUrl') : t('topicDetail.contentLinkUrl')}
                 </label>
                 {contentType === 'text' ? (
                   <textarea
                     value={contentValue}
                     onChange={(e) => setContentValue(e.target.value)}
                     rows={5}
-                    placeholder="Текстиңизди жазыңыз..."
+                    placeholder={`${t('topicDetail.contentText')}...`}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   />
                 ) : (
@@ -753,14 +736,13 @@ export default function TopicDetailPage() {
                 )}
               </div>
 
-              {/* Caption */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Кошумча текст (милдеттүү эмес)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('topicDetail.contentCaption')}</label>
                 <input
                   type="text"
                   value={contentCaption}
                   onChange={(e) => setContentCaption(e.target.value)}
-                  placeholder="Кыска сүрөттөмө..."
+                  placeholder={t('topicDetail.captionPlaceholder')}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -775,14 +757,14 @@ export default function TopicDetailPage() {
                   disabled={contentLoading}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-medium py-2.5 rounded-lg text-sm transition"
                 >
-                  {contentLoading ? 'Кошулуп жатат...' : 'Кошуу'}
+                  {contentLoading ? t('topicDetail.adding') : t('topicDetail.add')}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowAddContent(false); setContentError(''); }}
                   className="px-4 py-2.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition text-sm"
                 >
-                  Жокко чыгаруу
+                  {t('topicDetail.cancel')}
                 </button>
               </div>
             </form>
@@ -795,7 +777,7 @@ export default function TopicDetailPage() {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Подтема кошуу</h3>
+              <h3 className="font-semibold text-gray-900">{t('topicDetail.addSubtopicModal')}</h3>
               <button onClick={() => setShowAddSubtopic(false)} className="text-gray-400 hover:text-gray-600">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -804,25 +786,25 @@ export default function TopicDetailPage() {
             </div>
             <form onSubmit={handleAddSubtopic} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Аталышы</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('topicDetail.subtopicName')}</label>
                 <input
                   type="text"
                   value={subtopicTitle}
                   onChange={(e) => setSubtopicTitle(e.target.value)}
-                  placeholder="Подтема аты..."
+                  placeholder={t('topicDetail.subtopicNamePlaceholder')}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   autoFocus
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Жеткиликтүүлүк</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('topicDetail.subtopicVisibility')}</label>
                 <select
                   value={subtopicVis}
                   onChange={(e) => setSubtopicVis(e.target.value as any)}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="private">Жашыруун</option>
-                  <option value="public">Жалпы</option>
+                  <option value="private">{t('topicDetail.subtopicPrivate')}</option>
+                  <option value="public">{t('topicDetail.subtopicPublic')}</option>
                 </select>
               </div>
               <div className="flex gap-3 pt-2">
@@ -831,14 +813,14 @@ export default function TopicDetailPage() {
                   disabled={subtopicLoading}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-medium py-2.5 rounded-lg text-sm transition"
                 >
-                  {subtopicLoading ? '...' : 'Түзүү'}
+                  {subtopicLoading ? t('topicDetail.creating') : t('topicDetail.create')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddSubtopic(false)}
                   className="px-4 py-2.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition text-sm"
                 >
-                  Жокко чыгаруу
+                  {t('topicDetail.cancel')}
                 </button>
               </div>
             </form>

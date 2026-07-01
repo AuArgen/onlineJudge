@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { getTopicByToken } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 function ContentBlock({ block }: { block: any }) {
   switch (block.type) {
@@ -56,6 +57,7 @@ function ContentBlock({ block }: { block: any }) {
 
 export default function SharedTopicPage() {
   const { token } = useParams<{ token: string }>();
+  const { t } = useLanguage();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -63,7 +65,7 @@ export default function SharedTopicPage() {
   useEffect(() => {
     getTopicByToken(token)
       .then(setData)
-      .catch(() => setError('Тема табылган жок же шилтеме мурда жараксыз.'))
+      .catch(() => setError(t('topicShared.notFoundDesc')))
       .finally(() => setLoading(false));
   }, [token]);
 
@@ -72,7 +74,7 @@ export default function SharedTopicPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-gray-400 text-sm">Жүктөлүп жатат...</p>
+          <p className="text-gray-400 text-sm">{t('topicShared.loading')}</p>
         </div>
       </div>
     );
@@ -83,10 +85,10 @@ export default function SharedTopicPage() {
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="text-center max-w-md">
           <div className="text-6xl mb-4">🔒</div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Тема табылган жок</h1>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">{t('topicShared.notFound')}</h1>
           <p className="text-gray-500 text-sm mb-6">{error}</p>
           <Link href="/" className="text-blue-600 hover:underline text-sm">
-            Башкы бетке кайтуу
+            {t('topicShared.backHome')}
           </Link>
         </div>
       </div>
@@ -110,7 +112,7 @@ export default function SharedTopicPage() {
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
             </svg>
-            Бөлүшүлгөн тема
+            {t('topicShared.sharedTopic')}
           </span>
         </div>
       </div>
@@ -123,7 +125,7 @@ export default function SharedTopicPage() {
             <h1 className="text-2xl font-bold text-gray-900">{topic.title}</h1>
           </div>
           <p className="text-sm text-gray-500 ml-11">
-            {topic.author?.name} тарабынан
+            {topic.author?.name} {t('topicShared.by')}
           </p>
 
           <div className="flex flex-wrap gap-4 mt-4 ml-11 text-sm text-gray-500">
@@ -131,14 +133,14 @@ export default function SharedTopicPage() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
-              {problems?.length || 0} задача
+              {problems?.length || 0} {t('topicShared.problems')}
             </span>
             {topic.children && topic.children.length > 0 && (
               <span className="flex items-center gap-1.5">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                 </svg>
-                {topic.children.length} подтема
+                {topic.children.length} {t('topicShared.subtopics')}
               </span>
             )}
           </div>
@@ -160,7 +162,7 @@ export default function SharedTopicPage() {
         {/* Subtopics */}
         {topic.children && topic.children.length > 0 && (
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Подтемалар</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">{t('topicShared.subtopicsTitle')}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {topic.children.map((child: any) => (
                 <div key={child.id} className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl">
@@ -175,14 +177,14 @@ export default function SharedTopicPage() {
         {/* Problems */}
         {problems && problems.length > 0 && (
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Задачалар</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">{t('topicShared.problemsTitle')}</h2>
             <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">#</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Задача</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Статус</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">{t('topicShared.problemCol')}</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">{t('topicShared.statusCol')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -196,7 +198,7 @@ export default function SharedTopicPage() {
                             href={`/problems/${tp.problem_id}`}
                             className="font-medium text-gray-900 hover:text-blue-600 transition text-sm"
                           >
-                            {tp.problem?.title || `Задача #${tp.problem_id}`}
+                            {tp.problem?.title || `#${tp.problem_id}`}
                           </Link>
                         </td>
                         <td className="px-4 py-3 text-center">
@@ -205,14 +207,14 @@ export default function SharedTopicPage() {
                               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                               </svg>
-                              Чыгарылды
+                              {t('topicShared.solved')}
                             </span>
                           ) : (
                             <Link
                               href={`/problems/${tp.problem_id}`}
                               className="text-xs text-blue-600 hover:underline"
                             >
-                              Чыгаруу
+                              {t('topicShared.solve')}
                             </Link>
                           )}
                         </td>
@@ -227,7 +229,7 @@ export default function SharedTopicPage() {
         {problems?.length === 0 && !topic.contents?.length && (
           <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
             <div className="text-4xl mb-3">📭</div>
-            <p className="text-gray-400">Бул тема бош</p>
+            <p className="text-gray-400">{t('topicShared.empty')}</p>
           </div>
         )}
       </div>

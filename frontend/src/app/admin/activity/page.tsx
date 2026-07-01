@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { API_URL } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ActivityEntry {
   submission_id: number;
@@ -37,6 +38,7 @@ const DAY_OPTIONS = [7, 14, 30, 60, 90];
 
 export default function AdminActivityPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [data, setData] = useState<ActivityResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
@@ -82,13 +84,13 @@ export default function AdminActivityPage() {
     <div className="max-w-7xl mx-auto py-10 px-4">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <Link href="/admin" className="hover:text-gray-900">Админ</Link>
+        <Link href="/admin" className="hover:text-gray-900">{t('adminActivity.admin')}</Link>
         <span>/</span>
-        <span className="text-gray-900 font-medium">Активность</span>
+        <span className="text-gray-900 font-medium">{t('adminActivity.title')}</span>
       </div>
 
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-gray-900">Колдонуучулардын активности</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('adminActivity.title')}</h1>
 
         {/* Day selector */}
         <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
@@ -102,7 +104,7 @@ export default function AdminActivityPage() {
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              {d} күн
+              {d} {t('adminActivity.days')}
             </button>
           ))}
         </div>
@@ -113,26 +115,26 @@ export default function AdminActivityPage() {
         <div className="grid grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center">
             <div className="text-2xl font-bold text-indigo-600">{activity.length}</div>
-            <div className="text-xs text-gray-500 mt-1">Жалпы жооп</div>
+            <div className="text-xs text-gray-500 mt-1">{t('adminActivity.total')}</div>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center">
             <div className="text-2xl font-bold text-green-600">{acceptedCount}</div>
-            <div className="text-xs text-gray-500 mt-1">Кабыл алынган</div>
+            <div className="text-xs text-gray-500 mt-1">{t('adminActivity.accepted')}</div>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center">
             <div className="text-2xl font-bold text-gray-700">{uniqueUsers}</div>
-            <div className="text-xs text-gray-500 mt-1">Активдүү колдонуучу</div>
+            <div className="text-xs text-gray-500 mt-1">{t('adminActivity.activeUsers')}</div>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center">
             <div className="text-2xl font-bold text-gray-700">{uniqueProblems}</div>
-            <div className="text-xs text-gray-500 mt-1">Аракет кылынган маселе</div>
+            <div className="text-xs text-gray-500 mt-1">{t('adminActivity.problemsAttempted')}</div>
           </div>
         </div>
       )}
 
       {/* Status filter */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <span className="text-sm text-gray-500">Статус:</span>
+        <span className="text-sm text-gray-500">{t('adminActivity.statusLabel')}</span>
         {['', 'Accepted', 'Wrong Answer', 'Time Limit Exceeded', 'Runtime Error'].map((s) => (
           <button
             key={s}
@@ -143,7 +145,7 @@ export default function AdminActivityPage() {
                 : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-400'
             }`}
           >
-            {s || 'Баары'}
+            {s || t('adminActivity.all')}
           </button>
         ))}
       </div>
@@ -153,23 +155,23 @@ export default function AdminActivityPage() {
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Колдонуучу</th>
-              <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Маселе</th>
-              <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Тил</th>
-              <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
-              <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Убакыт</th>
-              <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">Дата</th>
+              <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('adminActivity.user')}</th>
+              <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('adminActivity.problem')}</th>
+              <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('adminActivity.language')}</th>
+              <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('adminActivity.status')}</th>
+              <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('adminActivity.time')}</th>
+              <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('adminActivity.date')}</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {loading ? (
               <tr>
-                <td colSpan={6} className="text-center py-12 text-gray-400">Жүктөлүүдө...</td>
+                <td colSpan={6} className="text-center py-12 text-gray-400">{t('adminActivity.loading')}</td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
                 <td colSpan={6} className="text-center py-12 text-gray-400">
-                  {days} күн ичинде активность жок
+                  {t('adminActivity.noActivity').replace('{n}', String(days))}
                 </td>
               </tr>
             ) : (
@@ -209,7 +211,7 @@ export default function AdminActivityPage() {
                   </td>
                   <td className="px-5 py-3 text-sm text-gray-500">{entry.execution_time || '—'}</td>
                   <td className="px-5 py-3 text-sm text-gray-500">
-                    {new Date(entry.created_at).toLocaleString('ky-KG')}
+                    {new Date(entry.created_at).toLocaleString()}
                   </td>
                 </tr>
               ))
