@@ -4,53 +4,44 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function Profile() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState<any[]>([]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/auth/login');
-      return;
-    }
+    if (!token) { router.push('/auth/login'); return; }
 
-    // Fetch User Profile
-    fetch(`${API_URL}/profile`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
+    fetch(`${API_URL}/profile`, { headers: { 'Authorization': `Bearer ${token}` } })
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch profile');
         return res.json();
       })
       .then((data) => {
         setUser(data);
-        // Save updated user data to localStorage
         localStorage.setItem('user', JSON.stringify(data));
       })
       .catch((err) => {
         console.error(err);
-        // If token is invalid, logout
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         router.push('/auth/login');
       })
       .finally(() => setLoading(false));
 
-    // Fetch Submission History
-    fetch(`${API_URL}/history`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
+    fetch(`${API_URL}/history`, { headers: { 'Authorization': `Bearer ${token}` } })
       .then((res) => res.json())
       .then(setHistory)
       .catch(console.error);
   }, [router]);
 
-  if (loading) return <div className="p-10 text-center">Загрузка профиля...</div>;
-  if (!user) return <div className="p-10 text-center">Пользователь не найден</div>;
+  if (loading) return <div className="p-10 text-center">{t('profile.loading')}</div>;
+  if (!user) return <div className="p-10 text-center">{t('profile.notFound')}</div>;
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-4">
@@ -67,21 +58,21 @@ export default function Profile() {
         </div>
         <div className="flex-shrink-0">
           <Link href="/problems?filter=my" className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm hover:shadow">
-            Мои задачи
+            {t('profile.myProblems')}
           </Link>
         </div>
       </div>
 
       <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">История решений</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">{t('profile.solutionHistory')}</h2>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Задача</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Язык</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('profile.problem')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('profile.status')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('profile.language')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('profile.date')}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -93,21 +84,17 @@ export default function Profile() {
                     </a>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      sub.status === 'Accepted' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${sub.status === 'Accepted' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                       {sub.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{sub.language}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(sub.created_at).toLocaleDateString()}
-                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(sub.created_at).toLocaleDateString()}</td>
                 </tr>
               ))}
               {history.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">Нет решений</td>
+                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">{t('profile.noSolutions')}</td>
                 </tr>
               )}
             </tbody>

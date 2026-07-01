@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { API_URL } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function Leaderboard() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useLanguage();
 
   useEffect(() => {
     fetch(`${API_URL}/leaderboard`)
@@ -17,25 +19,25 @@ export default function Leaderboard() {
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-4">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">Рейтинг</h1>
-      
+      <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">{t('leaderboard.title')}</h1>
+
       <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">#</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Пользователь</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Решено задач</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('leaderboard.user')}</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{t('leaderboard.solvedProblems')}</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={3} className="px-6 py-10 text-center text-gray-500">Загрузка...</td>
+                <td colSpan={3} className="px-6 py-10 text-center text-gray-500">{t('common.loading')}</td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={3} className="px-6 py-10 text-center text-gray-500">Нет данных</td>
+                <td colSpan={3} className="px-6 py-10 text-center text-gray-500">{t('common.noData')}</td>
               </tr>
             ) : (
               users.map((user: any, index: number) => (

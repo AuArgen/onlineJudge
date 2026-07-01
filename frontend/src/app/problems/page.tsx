@@ -19,7 +19,7 @@ function ProblemsContent() {
   const [filter, setFilter] = useState(initialFilter);
   const [user, setUser] = useState<any>(null);
   const [page, setPage] = useState(1);
-  const { lang } = useLanguage();
+  const { lang, t } = useLanguage();
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const limit = 20;
@@ -80,25 +80,32 @@ function ProblemsContent() {
     <div className="max-w-7xl mx-auto py-10 px-4">
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Задачи</h1>
-          {!loading && <p className="text-sm text-gray-500 mt-1">Найдено: {total}</p>}
+          <h1 className="text-3xl font-bold text-gray-900">{t('problems.title')}</h1>
+          {!loading && <p className="text-sm text-gray-500 mt-1">{t('problems.found')}: {total}</p>}
         </div>
 
         <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto items-center">
           <div className="flex bg-gray-100 p-1 rounded-lg">
-            {['all', 'public'].map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${filter === f ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-              >
-                {f === 'all' ? 'Все' : 'Публичные'}
-              </button>
-            ))}
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${filter === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              {t('problems.filterAll')}
+            </button>
+            <button
+              onClick={() => setFilter('public')}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${filter === 'public' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              {t('problems.filterPublic')}
+            </button>
             {user && (
               <>
-                <button onClick={() => setFilter('my')} className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${filter === 'my' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Мои</button>
-                <button onClick={() => setFilter('private')} className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${filter === 'private' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Приватные</button>
+                <button onClick={() => setFilter('my')} className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${filter === 'my' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                  {t('problems.filterMy')}
+                </button>
+                <button onClick={() => setFilter('private')} className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${filter === 'private' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                  {t('problems.filterPrivate')}
+                </button>
               </>
             )}
           </div>
@@ -106,7 +113,7 @@ function ProblemsContent() {
           <div className="relative flex-grow md:flex-grow-0 w-full md:w-64">
             <input
               type="text"
-              placeholder="Поиск задач..."
+              placeholder={t('problems.searchPlaceholder')}
               className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -117,7 +124,7 @@ function ProblemsContent() {
           </div>
 
           <Link href="/problems/create" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition whitespace-nowrap text-sm flex items-center">
-            <span className="mr-1">+</span> Создать
+            {t('problems.create')}
           </Link>
         </div>
       </div>
@@ -128,10 +135,10 @@ function ProblemsContent() {
         </div>
       ) : problems.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
-          <p className="text-gray-500 text-lg">Задачи не найдены.</p>
+          <p className="text-gray-500 text-lg">{t('problems.notFound')}</p>
           {(search || filter !== 'all') && (
             <button onClick={() => { setSearch(''); setFilter('all'); }} className="text-blue-600 mt-2 hover:underline">
-              Сбросить фильтры
+              {t('problems.resetFilters')}
             </button>
           )}
         </div>
@@ -146,22 +153,22 @@ function ProblemsContent() {
                       <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition">{problem.title}</h3>
                       {problem.visibility !== 'public' && (
                         <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-100 text-gray-700 border-gray-200">
-                          {problem.visibility === 'private' ? 'Приватная' : problem.visibility}
+                          {problem.visibility === 'private' ? t('problems.private') : problem.visibility}
                         </span>
                       )}
                     </div>
                     <p className="text-sm text-gray-500 line-clamp-1 max-w-2xl">{problem.description}</p>
                   </div>
                   <div className="flex items-center gap-6 text-sm text-gray-500 w-full sm:w-auto justify-between sm:justify-end">
-                    <div className="flex items-center gap-1" title="Решили">
+                    <div className="flex items-center gap-1">
                       <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                       <span>{problem.solved_count || 0}</span>
                     </div>
-                    <div className="flex items-center gap-1" title="Time Limit">
+                    <div className="flex items-center gap-1">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                       {problem.time_limit}s
                     </div>
-                    <div className="flex items-center gap-1" title="Memory Limit">
+                    <div className="flex items-center gap-1">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                       {problem.memory_limit}MB
                     </div>
@@ -171,7 +178,6 @@ function ProblemsContent() {
             ))}
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex justify-center items-center gap-2 mt-8">
               <button
@@ -218,7 +224,7 @@ function ProblemsContent() {
 
 export default function Problems() {
   return (
-    <Suspense fallback={<div className="p-10 text-center">Загрузка...</div>}>
+    <Suspense fallback={<div className="p-10 text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div></div>}>
       <ProblemsContent />
     </Suspense>
   );

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { API_URL } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface UserWithStats {
   id: number;
@@ -18,6 +19,7 @@ interface UserWithStats {
 
 export default function AdminUsersPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [users, setUsers] = useState<UserWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -29,9 +31,7 @@ export default function AdminUsersPage() {
     const user = JSON.parse(userData);
     if (user.role !== 'admin') { router.push('/'); return; }
 
-    fetch(`${API_URL}/admin/users`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    fetch(`${API_URL}/admin/users`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then(setUsers)
       .catch(console.error)
@@ -46,23 +46,20 @@ export default function AdminUsersPage() {
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4">
-      {/* Nav */}
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <Link href="/admin" className="hover:text-gray-900">Админ</Link>
+        <Link href="/admin" className="hover:text-gray-900">{t('admin.title')}</Link>
         <span>/</span>
-        <span className="text-gray-900 font-medium">Колдонуучулар</span>
+        <span className="text-gray-900 font-medium">{t('adminUsers.title')}</span>
       </div>
 
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">
-          Колдонуучулар
-          {!loading && (
-            <span className="ml-2 text-base font-normal text-gray-400">({users.length})</span>
-          )}
+          {t('adminUsers.title')}
+          {!loading && <span className="ml-2 text-base font-normal text-gray-400">({users.length})</span>}
         </h1>
         <input
           type="text"
-          placeholder="Издөө (аты же email)..."
+          placeholder={t('adminUsers.search')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -73,20 +70,20 @@ export default function AdminUsersPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Колдонуучу</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Роль</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Чечилген</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Жооп жиберген</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Акыркы активность</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Катталган</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('adminUsers.user')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('adminUsers.role')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('adminUsers.solved')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('adminUsers.submissions')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('adminUsers.lastActive')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('adminUsers.registered')}</th>
               <th className="px-6 py-3" />
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
-              <tr><td colSpan={7} className="text-center py-12 text-gray-400">Жүктөлүүдө...</td></tr>
+              <tr><td colSpan={7} className="text-center py-12 text-gray-400">{t('common.loading')}</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={7} className="text-center py-12 text-gray-400">Колдонуучу табылган жок</td></tr>
+              <tr><td colSpan={7} className="text-center py-12 text-gray-400">{t('adminUsers.notFound')}</td></tr>
             ) : (
               filtered.map((u) => (
                 <tr key={u.id} className="hover:bg-gray-50 transition-colors">
@@ -102,28 +99,21 @@ export default function AdminUsersPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                      u.role === 'admin' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {u.role === 'admin' ? 'Админ' : 'Колдонуучу'}
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${u.role === 'admin' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {u.role === 'admin' ? t('adminUsers.roleAdmin') : t('adminUsers.roleUser')}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700 font-medium">{u.solved_count}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">{u.total_submissions}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">
-                    {u.last_active_at
-                      ? new Date(u.last_active_at).toLocaleDateString('ky-KG')
-                      : '—'}
+                    {u.last_active_at ? new Date(u.last_active_at).toLocaleDateString() : '—'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
-                    {new Date(u.created_at).toLocaleDateString('ky-KG')}
+                    {new Date(u.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <Link
-                      href={`/admin/users/${u.id}`}
-                      className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
-                    >
-                      Карoo →
+                    <Link href={`/admin/users/${u.id}`} className="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
+                      {t('admin.view')}
                     </Link>
                   </td>
                 </tr>

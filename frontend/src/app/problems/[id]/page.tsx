@@ -10,7 +10,6 @@ import { useToast } from '@/components/ToastProvider';
 import { API_URL } from '@/lib/api';
 import { useLanguage, LANGUAGES } from '@/contexts/LanguageContext';
 
-// Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
 const CODE_TEMPLATES: Record<string, string> = {
@@ -75,8 +74,7 @@ rl.on('close', () => {
 const DEFAULT_CODE = '// Write your code here';
 const ALL_TEMPLATES = new Set([DEFAULT_CODE, ...Object.values(CODE_TEMPLATES)]);
 
-// Modal for Submission Details
-function SubmissionDetailsModal({ submission, onClose }: { submission: any, onClose: () => void }) {
+function SubmissionDetailsModal({ submission, onClose, t }: { submission: any; onClose: () => void; t: (k: string) => string }) {
   const [details, setDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -92,14 +90,8 @@ function SubmissionDetailsModal({ submission, onClose }: { submission: any, onCl
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
-      .then(data => {
-        setDetails(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
+      .then(data => { setDetails(data); setLoading(false); })
+      .catch(err => { console.error(err); setLoading(false); });
   }, [submission]);
 
   return (
@@ -107,10 +99,8 @@ function SubmissionDetailsModal({ submission, onClose }: { submission: any, onCl
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
         <div className="flex justify-between items-center p-5 border-b bg-gray-50">
           <div>
-            <h3 className="text-xl font-bold text-gray-900">Попытка #{submission.id}</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              {new Date(submission.created_at).toLocaleString()}
-            </p>
+            <h3 className="text-xl font-bold text-gray-900">{t('problem.attempt')} #{submission.id}</h3>
+            <p className="text-sm text-gray-500 mt-1">{new Date(submission.created_at).toLocaleString()}</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition p-2 rounded-full hover:bg-gray-200">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -118,11 +108,10 @@ function SubmissionDetailsModal({ submission, onClose }: { submission: any, onCl
             </svg>
           </button>
         </div>
-        
+
         <div className="flex-grow overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left: Code */}
           <div className="flex flex-col h-full min-h-[400px]">
-            <h4 className="font-semibold text-gray-700 mb-2">Исходный код ({submission.language})</h4>
+            <h4 className="font-semibold text-gray-700 mb-2">{t('problem.sourceCode')} ({submission.language})</h4>
             <div className="flex-grow border rounded-lg overflow-hidden bg-gray-50">
               <Editor
                 height="100%"
@@ -134,35 +123,30 @@ function SubmissionDetailsModal({ submission, onClose }: { submission: any, onCl
             </div>
           </div>
 
-          {/* Right: Results */}
           <div className="flex flex-col">
-            <h4 className="font-semibold text-gray-700 mb-2">Результат</h4>
+            <h4 className="font-semibold text-gray-700 mb-2">{t('problem.result')}</h4>
             {loading ? (
               <div className="text-center py-10 text-gray-500 flex flex-col items-center">
                 <svg className="animate-spin h-8 w-8 text-blue-500 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Загрузка деталей...
+                {t('problem.loadingDetails')}
               </div>
             ) : details ? (
               <div className="space-y-4">
-                <div className={`p-4 rounded-lg border ${
-                  details.status === 'Accepted' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-                }`}>
-                  <div className={`text-2xl font-bold ${
-                    details.status === 'Accepted' ? 'text-green-700' : 'text-red-700'
-                  }`}>
+                <div className={`p-4 rounded-lg border ${details.status === 'Accepted' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                  <div className={`text-2xl font-bold ${details.status === 'Accepted' ? 'text-green-700' : 'text-red-700'}`}>
                     {details.status}
                   </div>
                   <div className="mt-2 text-sm text-gray-600 flex gap-4">
-                    <span>Время: <span className="font-mono font-medium">{details.execution_time}</span></span>
+                    <span>{t('problem.timeLabel')} <span className="font-mono font-medium">{details.execution_time}</span></span>
                   </div>
                 </div>
 
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                   <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 text-xs font-bold text-gray-500 uppercase">
-                    Тесты
+                    {t('problem.tests')}
                   </div>
                   <div className="divide-y divide-gray-100 max-h-[300px] overflow-y-auto">
                     {details.details && details.details.map((d: any, i: number) => (
@@ -170,22 +154,20 @@ function SubmissionDetailsModal({ submission, onClose }: { submission: any, onCl
                         <span className="text-sm font-medium text-gray-700">Test #{i + 1}</span>
                         <div className="flex items-center gap-3">
                           <span className="text-xs text-gray-500 font-mono">{d.execution_time}</span>
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                            d.status === 'Accepted' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                          }`}>
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${d.status === 'Accepted' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                             {d.status}
                           </span>
                         </div>
                       </div>
                     ))}
                     {(!details.details || details.details.length === 0) && (
-                      <div className="p-4 text-center text-gray-500 text-sm">Нет деталей тестов</div>
+                      <div className="p-4 text-center text-gray-500 text-sm">{t('problem.noTestDetails')}</div>
                     )}
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="text-red-500">Не удалось загрузить детали</div>
+              <div className="text-red-500">{t('problem.failedLoadDetails')}</div>
             )}
           </div>
         </div>
@@ -201,8 +183,8 @@ function ProblemDetailContent() {
   const shareToken = searchParams.get('token');
   const { showToast } = useToast();
   const router = useRouter();
-  const { lang, setLang } = useLanguage();
-  
+  const { lang, setLang, t } = useLanguage();
+
   const [problem, setProblem] = useState<any>(null);
   const [code, setCode] = useState(CODE_TEMPLATES.python);
   const [language, setLanguage] = useState('python');
@@ -219,9 +201,7 @@ function ProblemDetailContent() {
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
+    if (userData) setUser(JSON.parse(userData));
   }, []);
 
   useEffect(() => {
@@ -244,7 +224,6 @@ function ProblemDetailContent() {
       .then((res) => res.json())
       .then(setProblem)
       .catch(console.error);
-
     fetchHistory();
   }, [id, lang, shareToken]);
 
@@ -258,7 +237,6 @@ function ProblemDetailContent() {
   const fetchHistory = () => {
     const token = localStorage.getItem('token');
     if (!token) return;
-
     fetch(`${API_URL}/history?problem_id=${id}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
@@ -268,48 +246,33 @@ function ProblemDetailContent() {
   };
 
   const handleSubmit = async () => {
-    if (!user) {
-      router.push('/auth/login');
-      return;
-    }
-
+    if (!user) { router.push('/auth/login'); return; }
     if (cooldown > 0) return;
-
     setSubmitting(true);
     setResult(null);
     const token = localStorage.getItem('token');
-    
     try {
       const res = await fetch(`${API_URL}/submit`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          problem_id: Number(id),
-          contest_id: contestId ? Number(contestId) : undefined,
-          language,
-          source_code: code
-        })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ problem_id: Number(id), contest_id: contestId ? Number(contestId) : undefined, language, source_code: code })
       });
       const data = await res.json();
       setResult(data);
-      
       if (res.ok) {
         if (data.status === 'Accepted') {
-          showToast('Решение принято!', 'success');
+          showToast(t('problem.accepted'), 'success');
         } else {
-          showToast(`Ошибка: ${data.status}`, 'error');
+          showToast(`${data.status}`, 'error');
         }
         fetchHistory();
         setCooldown(3);
       } else {
-        showToast(data.error || 'Ошибка при отправке', 'error');
+        showToast(data.error || t('problem.submitError'), 'error');
       }
     } catch (error) {
       console.error(error);
-      showToast('Ошибка сети', 'error');
+      showToast(t('problem.networkError'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -331,74 +294,63 @@ function ProblemDetailContent() {
       setRunResult(data);
     } catch (err) {
       console.error(err);
-      showToast('Ошибка при запуске', 'error');
+      showToast(t('problem.runError'), 'error');
     } finally {
       setRunning(false);
     }
   };
 
-  if (!problem) return <div className="p-10 text-center">Loading...</div>;
+  if (!problem) return <div className="p-10 text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div></div>;
 
   const isAuthor = user && (user.id === problem.author_id || user.role === 'admin');
 
   return (
     <div className="max-w-7xl mx-auto py-6 px-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
       {selectedSubmission && (
-        <SubmissionDetailsModal 
-          submission={selectedSubmission} 
-          onClose={() => setSelectedSubmission(null)} 
-        />
+        <SubmissionDetailsModal submission={selectedSubmission} onClose={() => setSelectedSubmission(null)} t={t} />
       )}
 
-      {/* Left Column: Problem & History */}
+      {/* Left Column */}
       <div className="flex flex-col gap-6">
-        {/* Problem Description */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 relative">
-          {/* Breadcrumb / Header */}
           <div className="flex justify-between items-center mb-6">
             {contestId ? (
               <Link href={`/contests/${contestId}`} className="text-sm text-blue-600 hover:underline flex items-center">
-                ← Назад к соревнованию
+                {t('problem.backToContest')}
               </Link>
             ) : (
               <Link href="/problems" className="text-sm text-blue-600 hover:underline flex items-center">
-                ← Все задачи
+                {t('problem.allProblems')}
               </Link>
             )}
             {isAuthor && (
-              <Link 
-                href={`/problems/${id}/edit`}
-                className="text-gray-400 hover:text-blue-600 transition p-1 rounded hover:bg-blue-50"
-                title="Редактировать задачу"
-              >
+              <Link href={`/problems/${id}/edit`} className="text-gray-400 hover:text-blue-600 transition p-1 rounded hover:bg-blue-50" title={t('problem.editProblem')}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </Link>
             )}
           </div>
-          
+
           <h1 className="text-2xl font-bold mb-3 text-gray-900">{problem.title}</h1>
 
-          {/* Language selector for this problem */}
           {problem.translations && problem.translations.length > 0 && (
             <div className="flex gap-1.5 mb-4 flex-wrap">
-              {/* Default lang (Russian) is always available */}
               <button
                 onClick={() => setLang('ru')}
                 className={`text-xs px-2.5 py-1 rounded-full border transition font-medium ${lang === 'ru' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'}`}
               >
                 🇷🇺 Русский
               </button>
-              {problem.translations.map((t: any) => {
-                const l = LANGUAGES.find(l => l.code === t.language_code);
+              {problem.translations.map((tr: any) => {
+                const l = LANGUAGES.find(l => l.code === tr.language_code);
                 return (
                   <button
-                    key={t.language_code}
-                    onClick={() => setLang(t.language_code)}
-                    className={`text-xs px-2.5 py-1 rounded-full border transition font-medium ${lang === t.language_code ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'}`}
+                    key={tr.language_code}
+                    onClick={() => setLang(tr.language_code)}
+                    className={`text-xs px-2.5 py-1 rounded-full border transition font-medium ${lang === tr.language_code ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'}`}
                   >
-                    {l?.flag} {l?.label || t.language_code}
+                    {l?.flag} {l?.label || tr.language_code}
                   </button>
                 );
               })}
@@ -424,25 +376,22 @@ function ProblemDetailContent() {
             [&_li]:mb-1
             [&_blockquote]:border-l-4 [&_blockquote]:border-blue-300 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-gray-600
           ">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {problem.description}
-            </ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{problem.description}</ReactMarkdown>
           </div>
 
-          {/* Sample Test Cases */}
           {problem.test_cases && problem.test_cases.length > 0 && (
             <div className="mb-4">
-              <h3 className="text-sm font-bold mb-3 text-gray-900 uppercase tracking-wide">Примеры</h3>
+              <h3 className="text-sm font-bold mb-3 text-gray-900 uppercase tracking-wide">{t('problem.examples')}</h3>
               <div className="space-y-3">
                 {problem.test_cases.map((tc: any, i: number) => (
                   <div key={i} className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden text-sm">
                     <div className="grid grid-cols-2 divide-x divide-gray-200">
                       <div className="p-3">
-                        <div className="text-[10px] font-bold text-gray-500 uppercase mb-1">Ввод</div>
+                        <div className="text-[10px] font-bold text-gray-500 uppercase mb-1">{t('problem.input')}</div>
                         <pre className="font-mono text-gray-800 whitespace-pre-wrap">{tc.input}</pre>
                       </div>
                       <div className="p-3">
-                        <div className="text-[10px] font-bold text-gray-500 uppercase mb-1">Вывод</div>
+                        <div className="text-[10px] font-bold text-gray-500 uppercase mb-1">{t('problem.output')}</div>
                         <pre className="font-mono text-gray-800 whitespace-pre-wrap">{tc.expected_output}</pre>
                       </div>
                     </div>
@@ -453,18 +402,18 @@ function ProblemDetailContent() {
           )}
         </div>
 
-        {/* History Table */}
+        {/* History */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-          <h3 className="text-sm font-bold mb-3 text-gray-900 uppercase tracking-wide">История попыток</h3>
+          <h3 className="text-sm font-bold mb-3 text-gray-900 uppercase tracking-wide">{t('problem.attemptHistory')}</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Язык</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Время</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Дата</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Действие</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('problem.status')}</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('problem.language')}</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('problem.time')}</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('problem.date')}</th>
+                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">{t('problem.action')}</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -472,7 +421,7 @@ function ProblemDetailContent() {
                   <tr key={sub.id} className="hover:bg-gray-50 transition cursor-pointer" onClick={() => setSelectedSubmission(sub)}>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${
-                        sub.status === 'Accepted' ? 'bg-green-100 text-green-800' : 
+                        sub.status === 'Accepted' ? 'bg-green-100 text-green-800' :
                         sub.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
                       }`}>
                         {sub.status}
@@ -480,19 +429,17 @@ function ProblemDetailContent() {
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-gray-500">{sub.language}</td>
                     <td className="px-3 py-2 whitespace-nowrap text-gray-500">{sub.execution_time}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-gray-500 text-xs">
-                      {new Date(sub.created_at).toLocaleString()}
-                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-gray-500 text-xs">{new Date(sub.created_at).toLocaleString()}</td>
                     <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
                       <button onClick={(e) => { e.stopPropagation(); setSelectedSubmission(sub); }} className="text-blue-600 hover:text-blue-900">
-                        Детали
+                        {t('problem.details')}
                       </button>
                     </td>
                   </tr>
                 ))}
                 {history.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-3 py-4 text-center text-gray-500 text-xs">Нет попыток</td>
+                    <td colSpan={5} className="px-3 py-4 text-center text-gray-500 text-xs">{t('problem.noAttempts')}</td>
                   </tr>
                 )}
               </tbody>
@@ -501,20 +448,17 @@ function ProblemDetailContent() {
         </div>
       </div>
 
-      {/* Right Column: Editor & Result (Sticky) */}
+      {/* Right Column */}
       <div className="flex flex-col gap-4">
         <div className="sticky top-24 flex flex-col gap-4">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col">
-            {/* Toolbar */}
             <div className="flex justify-between items-center mb-3">
               <select
                 value={language}
                 onChange={(e) => {
                   const newLang = e.target.value;
                   setLanguage(newLang);
-                  if (ALL_TEMPLATES.has(code)) {
-                    setCode(CODE_TEMPLATES[newLang] || '');
-                  }
+                  if (ALL_TEMPLATES.has(code)) setCode(CODE_TEMPLATES[newLang] || '');
                 }}
                 className="border rounded px-3 py-1.5 text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
               >
@@ -544,7 +488,7 @@ function ProblemDetailContent() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                       )}
-                      {running ? 'Запуск...' : 'Тест'}
+                      {running ? t('problem.running') : t('problem.run')}
                     </button>
                     <button
                       onClick={() => { handleSubmit(); setActiveOutputTab('submit'); }}
@@ -557,18 +501,17 @@ function ProblemDetailContent() {
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                         </svg>
                       ) : null}
-                      {submitting ? 'Проверка...' : cooldown > 0 ? `Ждите ${cooldown}с` : 'Отправить'}
+                      {submitting ? t('problem.submitting') : cooldown > 0 ? t('problem.wait').replace('{n}', String(cooldown)) : t('problem.submit')}
                     </button>
                   </>
                 ) : (
                   <Link href="/auth/login" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-1.5 rounded-md text-sm font-medium transition shadow-sm">
-                    Войти
+                    {t('problem.login')}
                   </Link>
                 )}
               </div>
             </div>
 
-            {/* Monaco Editor */}
             <div className="border rounded-lg overflow-hidden shadow-inner h-[420px]">
               <Editor
                 height="100%"
@@ -581,21 +524,19 @@ function ProblemDetailContent() {
               />
             </div>
 
-            {/* Custom Input */}
             <div className="mt-3 border-t pt-3">
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                Stdin (ввод для теста)
+                {t('problem.stdin')}
               </label>
               <textarea
                 value={customInput}
                 onChange={(e) => setCustomInput(e.target.value)}
                 className="w-full border rounded-lg p-2 text-sm font-mono h-20 resize-none focus:ring-2 focus:ring-blue-500 outline-none text-gray-800"
-                placeholder={"Пример: 1 2 3\nЕсли код использует input() — введите данные здесь перед запуском"}
+                placeholder={t('problem.stdinPlaceholder')}
               />
             </div>
           </div>
 
-          {/* Output Tabs */}
           {(result || runResult) && (
             <div className="rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="flex border-b bg-gray-50">
@@ -604,7 +545,7 @@ function ProblemDetailContent() {
                     onClick={() => setActiveOutputTab('run')}
                     className={`px-4 py-2 text-sm font-medium transition ${activeOutputTab === 'run' ? 'bg-white border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
                   >
-                    Результат запуска
+                    {t('problem.runOutput')}
                   </button>
                 )}
                 {result && (
@@ -612,12 +553,11 @@ function ProblemDetailContent() {
                     onClick={() => setActiveOutputTab('submit')}
                     className={`px-4 py-2 text-sm font-medium transition ${activeOutputTab === 'submit' ? 'bg-white border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
                   >
-                    Результат отправки
+                    {t('problem.submitOutput')}
                   </button>
                 )}
               </div>
 
-              {/* Run Result */}
               {activeOutputTab === 'run' && runResult && (
                 <div className="p-4 bg-white">
                   <div className="flex items-center gap-2 mb-3">
@@ -628,31 +568,30 @@ function ProblemDetailContent() {
                   </div>
                   {runResult.stdout && (
                     <div className="mb-2">
-                      <div className="text-xs font-bold text-gray-500 uppercase mb-1">Вывод</div>
+                      <div className="text-xs font-bold text-gray-500 uppercase mb-1">{t('problem.outputLabel')}</div>
                       <pre className="bg-gray-50 border rounded p-3 text-sm font-mono text-gray-800 whitespace-pre-wrap max-h-40 overflow-y-auto">{runResult.stdout}</pre>
                     </div>
                   )}
                   {runResult.stderr && (
                     <div>
-                      <div className="text-xs font-bold text-red-500 uppercase mb-1">Ошибка</div>
+                      <div className="text-xs font-bold text-red-500 uppercase mb-1">{t('problem.errorLabel')}</div>
                       <pre className="bg-red-50 border border-red-100 rounded p-3 text-sm font-mono text-red-700 whitespace-pre-wrap max-h-40 overflow-y-auto">{runResult.stderr}</pre>
                     </div>
                   )}
                   {!runResult.stdout && !runResult.stderr && (
-                    <p className="text-sm text-gray-500">Нет вывода</p>
+                    <p className="text-sm text-gray-500">{t('problem.noOutput')}</p>
                   )}
                 </div>
               )}
 
-              {/* Submit Result */}
               {activeOutputTab === 'submit' && result && (
                 <div className={`p-4 ${result.status === 'Accepted' ? 'bg-green-50' : 'bg-red-50'}`}>
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <h3 className={`text-xl font-bold ${result.status === 'Accepted' ? 'text-green-700' : 'text-red-700'}`}>{result.status}</h3>
-                      <p className="text-sm text-gray-600 mt-0.5">Время: <span className="font-mono font-medium">{result.execution_time}</span></p>
+                      <p className="text-sm text-gray-600 mt-0.5">{t('problem.timeLabel')} <span className="font-mono font-medium">{result.execution_time}</span></p>
                     </div>
-                    <button onClick={() => setSelectedSubmission(result)} className="text-sm text-blue-600 hover:underline">Подробнее</button>
+                    <button onClick={() => setSelectedSubmission(result)} className="text-sm text-blue-600 hover:underline">{t('problem.more')}</button>
                   </div>
                 </div>
               )}
@@ -664,10 +603,9 @@ function ProblemDetailContent() {
   );
 }
 
-// Add props: any to satisfy Next.js Page type requirement
 export default function ProblemDetail(props: any) {
   return (
-    <Suspense fallback={<div className="p-10 text-center">Загрузка...</div>}>
+    <Suspense fallback={<div className="p-10 text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div></div>}>
       <ProblemDetailContent />
     </Suspense>
   );

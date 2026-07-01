@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
-function Countdown({ targetDate }: { targetDate: Date }) {
+function Countdown({ targetDate, finishedLabel }: { targetDate: Date; finishedLabel: string }) {
   const [timeLeft, setTimeLeft] = useState('');
 
   useEffect(() => {
@@ -14,7 +15,7 @@ function Countdown({ targetDate }: { targetDate: Date }) {
       const distance = targetDate.getTime() - now;
 
       if (distance < 0) {
-        setTimeLeft('Завершено');
+        setTimeLeft(finishedLabel);
         clearInterval(interval);
         return;
       }
@@ -22,12 +23,11 @@ function Countdown({ targetDate }: { targetDate: Date }) {
       const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
       setTimeLeft(`${hours}ч ${minutes}м ${seconds}с`);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [targetDate]);
+  }, [targetDate, finishedLabel]);
 
   return <span className="font-mono font-bold text-lg text-blue-600">{timeLeft}</span>;
 }
@@ -35,6 +35,7 @@ function Countdown({ targetDate }: { targetDate: Date }) {
 export default function ContestDetail() {
   const { id } = useParams();
   const router = useRouter();
+  const { t } = useLanguage();
   const [contest, setContest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [joined, setJoined] = useState(false);
@@ -42,7 +43,7 @@ export default function ContestDetail() {
 
   const fetchContestData = () => {
     const userData = localStorage.getItem('user');
-    
+
     fetch(`${API_URL}/contests/${id}`)
       .then((res) => res.json())
       .then((data) => {
@@ -56,7 +57,6 @@ export default function ContestDetail() {
       .catch(console.error)
       .finally(() => setLoading(false));
 
-    // Fetch Leaderboard
     fetch(`${API_URL}/contests/${id}/leaderboard`)
       .then(res => res.json())
       .then(setLeaderboard)
@@ -65,18 +65,13 @@ export default function ContestDetail() {
 
   useEffect(() => {
     fetchContestData();
-    // Poll leaderboard every 30 seconds
     const interval = setInterval(fetchContestData, 30000);
     return () => clearInterval(interval);
   }, [id]);
 
   const handleJoin = async () => {
     const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/auth/login');
-      return;
-    }
-
+    if (!token) { router.push('/auth/login'); return; }
     try {
       const res = await fetch(`${API_URL}/contests/${id}/join`, {
         method: 'POST',
@@ -84,18 +79,18 @@ export default function ContestDetail() {
       });
       if (res.ok) {
         setJoined(true);
-        alert('Вы успешно зарегистрировались!');
+        alert(t('contest.successRegister'));
         fetchContestData();
       } else {
-        alert('Ошибка при регистрации');
+        alert(t('contest.registerError'));
       }
     } catch (error) {
       console.error(error);
     }
   };
 
-  if (loading) return <div className="p-10 text-center">Загрузка...</div>;
-  if (!contest) return <div className="p-10 text-center">Соревнование не найдено</div>;
+  if (loading) return <div className="p-10 text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div></div>;
+  if (!contest) return <div className="p-10 text-center">{t('contest.notFound')}</div>;
 
   const now = new Date();
   const startTime = new Date(contest.start_time);
@@ -108,49 +103,48 @@ export default function ContestDetail() {
       <div className="bg-white shadow rounded-xl border border-gray-200 p-8 mb-8 text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">{contest.title}</h1>
         <p className="text-gray-500 mb-6 max-w-2xl mx-auto">{contest.description}</p>
-        
+
         <div className="flex justify-center gap-8 text-sm text-gray-600 mb-8">
           <div>
-            <span className="block font-bold text-gray-900">Начало</span>
+            <span className="block font-bold text-gray-900">{t('contest.start')}</span>
             {startTime.toLocaleString()}
           </div>
           <div>
-            <span className="block font-bold text-gray-900">Конец</span>
+            <span className="block font-bold text-gray-900">{t('contest.end')}</span>
             {endTime.toLocaleString()}
           </div>
         </div>
 
         {isStarted && !isFinished && (
           <div className="mb-6">
-            <span className="text-gray-500 mr-2">Осталось времени:</span>
-            <Countdown targetDate={endTime} />
+            <span className="text-gray-500 mr-2">{t('contest.timeLeft')}</span>
+            <Countdown targetDate={endTime} finishedLabel={t('contest.finished')} />
           </div>
         )}
 
         {!isStarted && !isFinished && (
           joined ? (
             <div className="bg-green-100 text-green-800 px-6 py-3 rounded-lg inline-block font-medium">
-              Вы зарегистрированы. Ожидайте начала.
+              {t('contest.registered')}
             </div>
           ) : (
             <button onClick={handleJoin} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-bold text-lg transition shadow-lg shadow-blue-200">
-              Зарегистрироваться
+              {t('contest.register')}
             </button>
           )
         )}
 
         {isStarted && (
           <div className={`px-6 py-3 rounded-lg inline-block font-medium ${isFinished ? 'bg-gray-100 text-gray-800' : 'bg-blue-50 text-blue-800'}`}>
-            {isFinished ? 'Соревнование завершено' : 'Соревнование идет!'}
+            {isFinished ? t('contest.contestFinished') : t('contest.contestRunning')}
           </div>
         )}
       </div>
 
-      {/* Problems List & Leaderboard */}
       {isStarted && (joined || isFinished) && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Задачи</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('contest.problems')}</h2>
             <div className="space-y-4">
               {contest.problems?.map((cp: any, index: number) => (
                 <Link key={cp.id} href={`/problems/${cp.problem_id}?contest_id=${contest.id}`} className="block group">
@@ -159,9 +153,7 @@ export default function ContestDetail() {
                       {String.fromCharCode(65 + index)}
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition">
-                        {cp.problem.title}
-                      </h3>
+                      <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition">{cp.problem.title}</h3>
                     </div>
                   </div>
                 </Link>
@@ -169,22 +161,21 @@ export default function ContestDetail() {
             </div>
           </div>
 
-          {/* Leaderboard */}
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Лидерборд</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('contest.leaderboard')}</h2>
             <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
               <table className="min-w-full divide-y divide-gray-200 text-sm">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium text-gray-500">#</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-500">Участник</th>
-                    <th className="px-3 py-2 text-center font-medium text-gray-500">Решено</th>
-                    <th className="px-3 py-2 text-right font-medium text-gray-500">Штраф</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-500">{t('contest.participant')}</th>
+                    <th className="px-3 py-2 text-center font-medium text-gray-500">{t('contest.solved')}</th>
+                    <th className="px-3 py-2 text-right font-medium text-gray-500">{t('contest.penalty')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {leaderboard.length === 0 ? (
-                    <tr><td colSpan={4} className="px-4 py-4 text-center text-gray-500">Нет данных</td></tr>
+                    <tr><td colSpan={4} className="px-4 py-4 text-center text-gray-500">{t('common.noData')}</td></tr>
                   ) : (
                     leaderboard.map((rank: any, index: number) => (
                       <tr key={index} className={index === 0 ? 'bg-yellow-50' : ''}>

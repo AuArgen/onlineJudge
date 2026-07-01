@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getTopics, deleteTopic } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function TopicsPage() {
   const { user, loading: authLoading } = useAuth();
+  const { t } = useLanguage();
   const [topics, setTopics] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -25,18 +27,17 @@ export default function TopicsPage() {
   }, [filter, authLoading, user]);
 
   const handleDelete = async (id: number, title: string) => {
-    if (!confirm(`"${title}" темасын өчүрүү? Ичиндеги баары жоголот.`)) return;
+    if (!confirm(`"${title}" ${t('topics.delete')}?`)) return;
     await deleteTopic(id);
     load(filter);
   };
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Темалар</h1>
-          <p className="text-gray-500 mt-1 text-sm">Задачаларды темалар боюнча уюштуруңуз</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('topics.title')}</h1>
+          <p className="text-gray-500 mt-1 text-sm">{t('topics.subtitle')}</p>
         </div>
         {user && (
           <Link
@@ -46,18 +47,17 @@ export default function TopicsPage() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Жаңы тема
+            {t('topics.newTopic')}
           </Link>
         )}
       </div>
 
-      {/* Filters */}
       {user && (
         <div className="flex gap-2 mb-6">
           {[
-            { key: 'all', label: 'Баары' },
-            { key: 'my', label: 'Менин' },
-            { key: 'public', label: 'Жалпы' },
+            { key: 'all', label: t('topics.filterAll') },
+            { key: 'my', label: t('topics.filterMy') },
+            { key: 'public', label: t('topics.filterPublic') },
           ].map((f) => (
             <button
               key={f.key}
@@ -74,24 +74,23 @@ export default function TopicsPage() {
         </div>
       )}
 
-      {/* Content */}
       {!user && !loading ? (
         <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
           <div className="text-5xl mb-4">🔐</div>
-          <p className="text-gray-600 text-lg font-medium">Темаларды көрүү үчүн кириңиз</p>
+          <p className="text-gray-600 text-lg font-medium">{t('topics.loginRequired')}</p>
           <Link href="/auth/login" className="mt-4 inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium transition text-sm">
-            Кирүү
+            {t('topics.login')}
           </Link>
         </div>
       ) : loading ? (
-        <div className="text-center py-20 text-gray-400">Жүктөлүп жатат...</div>
+        <div className="text-center py-20 text-gray-400">{t('topics.loading')}</div>
       ) : topics.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
           <div className="text-5xl mb-4">📂</div>
-          <p className="text-gray-500 text-lg font-medium">Темалар жок</p>
+          <p className="text-gray-500 text-lg font-medium">{t('topics.noTopics')}</p>
           {user && (
             <Link href="/topics/create" className="mt-4 inline-block text-blue-600 hover:underline text-sm">
-              Биринчи теманы түзүңүз
+              {t('topics.createFirst')}
             </Link>
           )}
         </div>
@@ -113,7 +112,7 @@ export default function TopicsPage() {
                     <Link
                       href={`/topics/${topic.id}/edit`}
                       className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                      title="Өзгөртүү"
+                      title={t('topics.edit')}
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -122,7 +121,7 @@ export default function TopicsPage() {
                     <button
                       onClick={() => handleDelete(topic.id, topic.title)}
                       className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                      title="Өчүрүү"
+                      title={t('topics.delete')}
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -138,28 +137,26 @@ export default function TopicsPage() {
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
-                    {topic.problem_count} задача
+                    {topic.problem_count} {t('topics.problemsCount')}
                   </span>
                   {topic.subtopic_count > 0 && (
                     <span className="flex items-center gap-1">
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                       </svg>
-                      {topic.subtopic_count} подтема
+                      {topic.subtopic_count} {t('topics.subtopicsCount')}
                     </span>
                   )}
                 </div>
 
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
                   <span className="text-xs text-gray-400">
-                    {topic.author?.name || 'Белгисиз'}
+                    {topic.author?.name || t('topics.unknown')}
                   </span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                    topic.visibility === 'public'
-                      ? 'bg-green-50 text-green-700'
-                      : 'bg-gray-100 text-gray-600'
+                    topic.visibility === 'public' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'
                   }`}>
-                    {topic.visibility === 'public' ? 'Жалпы' : 'Жашыруун'}
+                    {topic.visibility === 'public' ? t('topics.public') : t('topics.private')}
                   </span>
                 </div>
               </Link>

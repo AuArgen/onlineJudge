@@ -1,27 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { API_URL } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
-import { Suspense } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 function LoginContent() {
   const [url, setUrl] = useState('');
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading } = useAuth();
+  const { t } = useLanguage();
 
   useEffect(() => {
-    if (!loading && user) {
-      router.push('/');
-      return;
-    }
+    if (!loading && user) { router.push('/'); return; }
 
     const returnTo = searchParams.get('returnTo') || '/';
-    if (returnTo !== '/') {
-      localStorage.setItem('returnTo', returnTo);
-    }
+    if (returnTo !== '/') localStorage.setItem('returnTo', returnTo);
 
     fetch(`${API_URL}/auth/google/url`)
       .then((res) => res.json())
@@ -32,7 +28,7 @@ function LoginContent() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full space-y-8 p-8 bg-white shadow rounded-lg">
         <div className="text-center">
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Войти в аккаунт</h2>
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">{t('login.title')}</h2>
         </div>
         <div className="mt-8 space-y-6">
           {url ? (
@@ -40,10 +36,10 @@ function LoginContent() {
               href={url}
               className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              Войти через Google
+              {t('login.withGoogle')}
             </a>
           ) : (
-            <p className="text-center text-gray-500">Загрузка...</p>
+            <p className="text-center text-gray-500">{t('common.loading')}</p>
           )}
         </div>
       </div>
@@ -53,7 +49,7 @@ function LoginContent() {
 
 export default function Login() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p>Жүктөлүүдө...</p></div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
       <LoginContent />
     </Suspense>
   );
