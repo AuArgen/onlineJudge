@@ -198,6 +198,7 @@ function ProblemDetailContent() {
   const [runResult, setRunResult] = useState<any>(null);
   const [running, setRunning] = useState(false);
   const [activeOutputTab, setActiveOutputTab] = useState<'run' | 'submit'>('submit');
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -233,6 +234,12 @@ function ProblemDetailContent() {
       return () => clearTimeout(timer);
     }
   }, [cooldown]);
+
+  const handleCopy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 1500);
+  };
 
   const fetchHistory = () => {
     const token = localStorage.getItem('token');
@@ -387,11 +394,47 @@ function ProblemDetailContent() {
                   <div key={i} className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden text-sm">
                     <div className="grid grid-cols-2 divide-x divide-gray-200">
                       <div className="p-3">
-                        <div className="text-[10px] font-bold text-gray-500 uppercase mb-1">{t('problem.input')}</div>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[10px] font-bold text-gray-500 uppercase">{t('problem.input')}</span>
+                          <button
+                            onClick={() => handleCopy(tc.input, `${i}-in`)}
+                            className="text-[10px] text-gray-400 hover:text-blue-600 flex items-center gap-0.5 transition"
+                            title="Көчүрүү"
+                          >
+                            {copiedKey === `${i}-in` ? (
+                              <svg className="h-3 w-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : (
+                              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            )}
+                            {copiedKey === `${i}-in` ? 'Көчүрүлдү' : 'Көчүрүү'}
+                          </button>
+                        </div>
                         <pre className="font-mono text-gray-800 whitespace-pre-wrap">{tc.input}</pre>
                       </div>
                       <div className="p-3">
-                        <div className="text-[10px] font-bold text-gray-500 uppercase mb-1">{t('problem.output')}</div>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[10px] font-bold text-gray-500 uppercase">{t('problem.output')}</span>
+                          <button
+                            onClick={() => handleCopy(tc.expected_output, `${i}-out`)}
+                            className="text-[10px] text-gray-400 hover:text-blue-600 flex items-center gap-0.5 transition"
+                            title="Көчүрүү"
+                          >
+                            {copiedKey === `${i}-out` ? (
+                              <svg className="h-3 w-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : (
+                              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            )}
+                            {copiedKey === `${i}-out` ? 'Көчүрүлдү' : 'Көчүрүү'}
+                          </button>
+                        </div>
                         <pre className="font-mono text-gray-800 whitespace-pre-wrap">{tc.expected_output}</pre>
                       </div>
                     </div>

@@ -398,6 +398,87 @@ func AddTestCase(c *fiber.Ctx) error {
 	return c.JSON(testCase)
 }
 
+func UpdateTestCase(c *fiber.Ctx) error {
+	problemID := c.Params("id")
+	testCaseID := c.Params("testcase_id")
+	userID := c.Locals("user_id").(float64)
+	role := c.Locals("role").(string)
+
+	var problem models.Problem
+	if err := database.DB.First(&problem, problemID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Problem not found"})
+	}
+
+	if problem.AuthorID != uint(userID) && role != "admin" {
+		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
+	}
+
+	var testCase models.TestCase
+	if err := database.DB.First(&testCase, testCaseID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Test case not found"})
+	}
+
+	if testCase.ProblemID != problem.ID {
+		return c.Status(403).JSON(fiber.Map{"error": "Test case does not belong to this problem"})
+	}
+
+	var body struct {
+		Input    string `json:"input"`
+		IsSample bool   `json:"is_sample"`
+	}
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
+	}
+
+	var count int64
+	database.DB.Model(&models.TestCase{}).
+		Where("problem_id = ? AND input = ? AND id != ?", problem.ID, body.Input, testCase.ID).
+		Count(&count)
+	if count > 0 {
+		return c.Status(409).JSON(fiber.Map{"error": "Duplicate test case (input already exists)"})
+	}
+
+	if problem.AuthorSourceCode == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Author solution is missing. Please save author solution first."})
+	}
+
+	langID := 0
+	switch problem.AuthorLanguage {
+	case "python":
+		langID = 71
+	case "cpp":
+		langID = 54
+	case "java":
+		langID = 62
+	case "go":
+		langID = 60
+	case "javascript":
+		langID = 63
+	default:
+		langID = 71
+	}
+
+	results, err := compiler.ExecuteCode(compiler.CompilerSubmission{
+		SourceCode:  problem.AuthorSourceCode,
+		LanguageID:  langID,
+		TimeLimit:   5.0,
+		MemoryLimit: 256,
+	}, []string{body.Input})
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Execution failed: " + err.Error()})
+	}
+	if results[0].Stderr != "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Author solution Runtime Error: " + results[0].Stderr})
+	}
+
+	testCase.Input = body.Input
+	testCase.ExpectedOutput = strings.TrimSpace(results[0].Stdout)
+	testCase.IsSample = body.IsSample
+
+	database.DB.Save(&testCase)
+	return c.JSON(testCase)
+}
+
 // DeleteTestCase godoc
 // @Summary Delete a test case
 // @Description Delete a test case by ID

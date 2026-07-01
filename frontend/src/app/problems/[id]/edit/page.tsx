@@ -29,6 +29,9 @@ export default function EditProblem() {
   const [testCases, setTestCases] = useState<any[]>([]);
   const [newTest, setNewTest] = useState({ input: '', is_sample: false });
   const [addingTest, setAddingTest] = useState(false);
+  const [editingTestId, setEditingTestId] = useState<number | null>(null);
+  const [editData, setEditData] = useState({ input: '', is_sample: false });
+  const [savingTest, setSavingTest] = useState(false);
   const [shareEmail, setShareEmail] = useState('');
   const [translations, setTranslations] = useState<Record<string, { title: string; description: string }>>({});
   const [activeLang, setActiveLang] = useState('ky');
@@ -166,6 +169,50 @@ export default function EditProblem() {
     } catch (error) {
       console.error(error);
     }
+  };
+
+  const handleStartEdit = (tc: any) => {
+    setEditingTestId(tc.id);
+    setEditData({ input: tc.input, is_sample: tc.is_sample });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTestId(null);
+    setEditData({ input: '', is_sample: false });
+  };
+
+  const handleSaveEdit = async (testId: number) => {
+    if (!editData.input) {
+      alert('Кириш маалыматтарын жазыңыз');
+      return;
+    }
+    setSavingTest(true);
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_URL}/problems/${id}/testcases/${testId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(editData),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setTestCases(testCases.map(t => t.id === testId ? updated : t));
+        handleCancelEdit();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Ката');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Тармак катасы');
+    } finally {
+      setSavingTest(false);
+    }
+  };
+
+  const handleCopyTest = (tc: any) => {
+    const text = `Input:\n${tc.input}\n\nOutput:\n${tc.expected_output}`;
+    navigator.clipboard.writeText(text);
   };
 
   const handleShare = async () => {
@@ -501,20 +548,81 @@ export default function EditProblem() {
             </div>
 
             {/* List */}
-            <div className="space-y-2 max-h-[500px] overflow-y-auto">
+            <div className="space-y-2 max-h-[600px] overflow-y-auto">
               {testCases.map((tc: any, i: number) => (
-                <div key={tc.id} className="border rounded p-3 text-sm relative group">
-                  <div className="font-bold mb-1 flex justify-between">
-                    <span>Тест #{i + 1} {tc.is_sample && <span className="text-blue-600 text-xs">(Sample)</span>}</span>
-                    <button onClick={() => handleDeleteTest(tc.id)} className="text-red-500 hover:text-red-700">X</button>
+                <div key={tc.id} className="border rounded p-3 text-sm">
+                  <div className="font-bold mb-2 flex justify-between items-center">
+                    <span>Тест #{i + 1} {tc.is_sample && <span className="text-blue-600 text-xs ml-1">(Sample)</span>}</span>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleCopyTest(tc)}
+                        className="text-gray-400 hover:text-gray-700 px-1.5 py-0.5 rounded text-xs border border-gray-200 hover:border-gray-400"
+                        title="Көчүрүү"
+                      >
+                        Copy
+                      </button>
+                      <button
+                        onClick={() => editingTestId === tc.id ? handleCancelEdit() : handleStartEdit(tc)}
+                        className="text-blue-500 hover:text-blue-700 px-1.5 py-0.5 rounded text-xs border border-blue-200 hover:border-blue-400"
+                      >
+                        {editingTestId === tc.id ? 'Жабуу' : 'Өзгөртүү'}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTest(tc.id)}
+                        className="text-red-500 hover:text-red-700 px-1.5 py-0.5 rounded text-xs border border-red-200 hover:border-red-400"
+                      >
+                        Өчүрүү
+                      </button>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-gray-50 p-1 rounded truncate font-mono text-xs" title={tc.input}>In: {tc.input}</div>
-                    <div className="bg-gray-50 p-1 rounded truncate font-mono text-xs" title={tc.expected_output}>Out: {tc.expected_output}</div>
-                  </div>
+
+                  {editingTestId === tc.id ? (
+                    <div className="space-y-2 mt-2">
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Кириш (Input)</label>
+                        <textarea
+                          className="w-full border rounded p-2 text-xs font-mono h-20 focus:ring-1 focus:ring-blue-400"
+                          value={editData.input}
+                          onChange={e => setEditData({ ...editData, input: e.target.value })}
+                        />
+                      </div>
+                      <label className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editData.is_sample}
+                          onChange={e => setEditData({ ...editData, is_sample: e.target.checked })}
+                        />
+                        Sample катары көрсөтүү
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSaveEdit(tc.id)}
+                          disabled={savingTest}
+                          className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {savingTest ? 'Сакталууда...' : 'Сактоо'}
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="border border-gray-300 text-gray-600 px-3 py-1 rounded text-xs hover:bg-gray-50"
+                        >
+                          Жокко чыгаруу
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-gray-50 p-1.5 rounded font-mono text-xs whitespace-pre-wrap break-all" title={tc.input}>
+                        <span className="text-gray-400">In: </span>{tc.input}
+                      </div>
+                      <div className="bg-gray-50 p-1.5 rounded font-mono text-xs whitespace-pre-wrap break-all" title={tc.expected_output}>
+                        <span className="text-gray-400">Out: </span>{tc.expected_output}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
-              {testCases.length === 0 && <p className="text-gray-500 text-center text-sm">Нет тестов</p>}
+              {testCases.length === 0 && <p className="text-gray-500 text-center text-sm py-4">Тесттер жок</p>}
             </div>
           </div>
         </div>
