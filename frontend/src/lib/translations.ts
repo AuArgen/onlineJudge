@@ -112,6 +112,19 @@ const dict: Record<string, Record<LangCode, string>> = {
   'problem.submitError': { ru: 'Ошибка при отправке', ky: 'Жиберүүдө ката', en: 'Submission error' },
   'problem.networkError': { ru: 'Ошибка сети', ky: 'Тармак катасы', en: 'Network error' },
   'problem.runError': { ru: 'Ошибка при запуске', ky: 'Иштетүүдө ката', en: 'Run error' },
+  'problem.truncatedNotice': {
+    ru: 'Вывод слишком длинный и обрезан для отображения',
+    ky: 'Чыгаруу өтө узун, көрсөтүү үчүн кыскартылды',
+    en: 'Output is too long and was truncated for display',
+  },
+  'problem.showMore': { ru: 'Показать полностью', ky: 'Толугу менен көрсөтүү', en: 'Show more' },
+  'problem.showLess': { ru: 'Свернуть', ky: 'Жыйыштыруу', en: 'Show less' },
+  'problem.expectedOutput': { ru: 'Ожидаемый вывод', ky: 'Күтүлгөн чыгаруу', en: 'Expected output' },
+  'problem.actualOutput': { ru: 'Ваш вывод', ky: 'Сиздин чыгаруу', en: 'Your output' },
+  'problem.sampleTest': { ru: 'Пример', ky: 'Мисал', en: 'Sample' },
+  'problem.hiddenTest': { ru: 'Скрытый тест', ky: 'Жашыруун тест', en: 'Hidden test' },
+  'problem.copy': { ru: 'Копировать', ky: 'Көчүрүү', en: 'Copy' },
+  'problem.copied': { ru: 'Скопировано', ky: 'Көчүрүлдү', en: 'Copied' },
   'problem.login': { ru: 'Войти', ky: 'Кирүү', en: 'Login' },
 
   // Dashboard
@@ -259,6 +272,16 @@ const dict: Record<string, Record<LangCode, string>> = {
   'adminReview.confirmApprove': { ru: 'Опубликовать эту задачу?', ky: 'Бул маселелени жарыялайсызбы?', en: 'Publish this problem?' },
   'adminReview.confirmReject': { ru: 'Отклонить эту задачу?', ky: 'Бул маселелени четтетесизби?', en: 'Reject this problem?' },
   'adminReview.requireReason': { ru: 'Укажите причину отклонения.', ky: 'Четтетүү себебин жазыңыз.', en: 'Please provide a rejection reason.' },
+  'adminReview.validation': { ru: 'Проверка задачи', ky: 'Маселени текшерүү', en: 'Problem validation' },
+  'adminReview.validationOk': { ru: 'Все проверки пройдены', ky: 'Бардык текшерүүлөр өттү', en: 'All checks passed' },
+  'adminReview.validationBlocked': { ru: 'Публикация заблокирована, пока не устранены ошибки ниже', ky: 'Төмөндөгү каталар оңолмоюнча жарыялоо бөгөттөлөт', en: 'Publishing is blocked until the errors below are fixed' },
+  'adminReview.validationLoading': { ru: 'Проверка...', ky: 'Текшерилүүдө...', en: 'Checking...' },
+  'adminReview.testCaseCount': { ru: 'Всего тестов: {n}', ky: 'Бардыгы тесттер: {n}', en: 'Total tests: {n}' },
+  'adminReview.created': { ru: 'Создано:', ky: 'Түзүлгөн:', en: 'Created:' },
+  'adminReview.sample': { ru: 'Пример', ky: 'Мисал', en: 'Sample' },
+  'adminReview.hidden': { ru: 'Скрытый', ky: 'Жашыруун', en: 'Hidden' },
+  'adminReview.prevPage': { ru: '← Назад', ky: '← Артка', en: '← Prev' },
+  'adminReview.nextPage': { ru: 'Вперёд →', ky: 'Алдыга →', en: 'Next →' },
 
   // Create contest page
   'createContest.title': { ru: 'Создать соревнование', ky: 'Байге түзүү', en: 'Create contest' },
@@ -390,6 +413,10 @@ const dict: Record<string, Record<LangCode, string>> = {
   'editProblem.close': { ru: 'Закрыть', ky: 'Жабуу', en: 'Close' },
   'editProblem.edit': { ru: 'Редактировать', ky: 'Өзгөртүү', en: 'Edit' },
   'editProblem.deleteTest': { ru: 'Удалить', ky: 'Өчүрүү', en: 'Delete' },
+  'editProblem.totalTests': { ru: 'Всего тестов: {n}', ky: 'Бардыгы тесттер: {n}', en: 'Total tests: {n}' },
+  'editProblem.loadingTests': { ru: 'Загрузка...', ky: 'Жүктөлүүдө...', en: 'Loading...' },
+  'editProblem.prevPage': { ru: '← Назад', ky: '← Артка', en: '← Prev' },
+  'editProblem.nextPage': { ru: 'Вперёд →', ky: 'Алдыга →', en: 'Next →' },
 
   // Auth callback page
   'auth.authorizing': { ru: 'Авторизация...', ky: 'Аныктоо жүрүүдө...', en: 'Authorizing...' },

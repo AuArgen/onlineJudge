@@ -12,6 +12,13 @@ const TRANSLATION_LANGS = [
   { code: 'en', label: 'English', flag: '🇬🇧' },
 ];
 
+const TESTS_PAGE_SIZE = 10;
+
+function formatDate(value?: string) {
+  if (!value) return '';
+  return new Date(value).toLocaleString();
+}
+
 export default function EditProblem() {
   const router = useRouter();
   const { id } = useParams();
@@ -33,6 +40,10 @@ export default function EditProblem() {
     share_token: ''
   });
   const [testCases, setTestCases] = useState<any[]>([]);
+  const [testsLoading, setTestsLoading] = useState(false);
+  const [testsPage, setTestsPage] = useState(1);
+  const [testsTotalPages, setTestsTotalPages] = useState(1);
+  const [testsTotal, setTestsTotal] = useState(0);
   const [newTest, setNewTest] = useState({ input: '', is_sample: false });
   const [addingTest, setAddingTest] = useState(false);
   const [editingTestId, setEditingTestId] = useState<number | null>(null);
@@ -74,7 +85,6 @@ export default function EditProblem() {
           author_language: data.author_language || 'python',
           share_token: data.share_token || ''
         });
-        setTestCases(data.test_cases || []);
         if (data.translations) {
           const tMap: Record<string, { title: string; description: string }> = {};
           for (const tr of data.translations) {
@@ -86,6 +96,32 @@ export default function EditProblem() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [id]);
+
+  const fetchTestCases = async (page: number) => {
+    setTestsLoading(true);
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_URL}/problems/${id}/testcases?page=${page}&limit=${TESTS_PAGE_SIZE}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTestCases(data.data || []);
+        setTestsTotalPages(data.total_pages || 1);
+        setTestsTotal(data.total || 0);
+        setTestsPage(data.page || 1);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setTestsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTestCases(testsPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, testsPage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,9 +184,14 @@ export default function EditProblem() {
       });
 
       if (res.ok) {
-        const addedTest = await res.json();
-        setTestCases([...testCases, addedTest]);
         setNewTest({ input: '', is_sample: false });
+        const newTotal = testsTotal + 1;
+        const lastPage = Math.max(1, Math.ceil(newTotal / TESTS_PAGE_SIZE));
+        if (lastPage === testsPage) {
+          fetchTestCases(testsPage);
+        } else {
+          setTestsPage(lastPage);
+        }
       } else {
         const errorData = await res.json();
         alert(errorData.error || t('editProblem.addTestError'));
@@ -173,7 +214,8 @@ export default function EditProblem() {
       });
 
       if (res.ok) {
-        setTestCases(testCases.filter(tc => tc.id !== testId));
+        const goToPrevPage = testCases.length === 1 && testsPage > 1;
+        fetchTestCases(goToPrevPage ? testsPage - 1 : testsPage);
       }
     } catch (error) {
       console.error(error);
@@ -614,11 +656,18 @@ export default function EditProblem() {
             </div>
 
             {/* List */}
-            <div className="space-y-2 max-h-[600px] overflow-y-auto">
+            <div className="flex items-center justify-between mb-2 text-xs text-gray-500">
+              <span>{t('editProblem.totalTests').replace('{n}', String(testsTotal))}</span>
+              {testsLoading && <span className="text-gray-400">{t('editProblem.loadingTests')}</span>}
+            </div>
+            <div className="space-y-2 min-h-[200px]">
               {testCases.map((tc: any, i: number) => (
                 <div key={tc.id} className="border rounded p-3 text-sm">
                   <div className="font-bold mb-2 flex justify-between items-center">
-                    <span>Test #{i + 1} {tc.is_sample && <span className="text-blue-600 text-xs ml-1">(Sample)</span>}</span>
+                    <span>
+                      Test #{(testsPage - 1) * TESTS_PAGE_SIZE + i + 1} {tc.is_sample && <span className="text-blue-600 text-xs ml-1">(Sample)</span>}
+                      {tc.created_at && <span className="text-gray-400 font-normal text-[11px] ml-2">{formatDate(tc.created_at)}</span>}
+                    </span>
                     <div className="flex gap-1">
                       <button
                         onClick={() => handleCopyTest(tc)}
@@ -678,18 +727,40 @@ export default function EditProblem() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-gray-50 p-1.5 rounded font-mono text-xs whitespace-pre-wrap break-all" title={tc.input}>
-                        <span className="text-gray-400">In: </span>{tc.input}
+                      <div>
+                        <div className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">{t('editProblem.inputLabel')}</div>
+                        <pre className="bg-gray-50 p-1.5 rounded font-mono text-xs whitespace-pre-wrap break-all max-h-32 overflow-y-auto">{tc.input}</pre>
                       </div>
-                      <div className="bg-gray-50 p-1.5 rounded font-mono text-xs whitespace-pre-wrap break-all" title={tc.expected_output}>
-                        <span className="text-gray-400">Out: </span>{tc.expected_output}
+                      <div>
+                        <div className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">{t('problem.output')}</div>
+                        <pre className="bg-gray-50 p-1.5 rounded font-mono text-xs whitespace-pre-wrap break-all max-h-32 overflow-y-auto">{tc.expected_output}</pre>
                       </div>
                     </div>
                   )}
                 </div>
               ))}
-              {testCases.length === 0 && <p className="text-gray-500 text-center text-sm py-4">{t('editProblem.noTests')}</p>}
+              {!testsLoading && testCases.length === 0 && <p className="text-gray-500 text-center text-sm py-4">{t('editProblem.noTests')}</p>}
             </div>
+
+            {testsTotalPages > 1 && (
+              <div className="flex items-center justify-between mt-4 pt-3 border-t text-sm">
+                <button
+                  onClick={() => setTestsPage(p => Math.max(1, p - 1))}
+                  disabled={testsPage <= 1 || testsLoading}
+                  className="px-3 py-1 rounded border text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {t('editProblem.prevPage')}
+                </button>
+                <span className="text-gray-500 text-xs">{testsPage} / {testsTotalPages}</span>
+                <button
+                  onClick={() => setTestsPage(p => Math.min(testsTotalPages, p + 1))}
+                  disabled={testsPage >= testsTotalPages || testsLoading}
+                  className="px-3 py-1 rounded border text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {t('editProblem.nextPage')}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

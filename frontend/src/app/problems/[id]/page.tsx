@@ -74,9 +74,38 @@ rl.on('close', () => {
 const DEFAULT_CODE = '// Write your code here';
 const ALL_TEMPLATES = new Set([DEFAULT_CODE, ...Object.values(CODE_TEMPLATES)]);
 
+function OutputBlock({ label, text, truncated, tone, t }: { label: string; text: string; truncated?: boolean; tone: 'neutral' | 'error'; t: (k: string) => string }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = text.length > 400;
+  const boxColor = tone === 'error' ? 'bg-red-50 border-red-100 text-red-700' : 'bg-gray-50 border-gray-200 text-gray-800';
+  const labelColor = tone === 'error' ? 'text-red-500' : 'text-gray-500';
+
+  return (
+    <div>
+      <div className={`text-xs font-bold uppercase mb-1 ${labelColor}`}>{label}</div>
+      <pre className={`border rounded p-3 text-sm font-mono whitespace-pre-wrap overflow-y-auto ${boxColor} ${expanded ? 'max-h-96' : 'max-h-40'}`}>
+        {text}
+      </pre>
+      {(isLong || truncated) && (
+        <div className="flex items-center gap-3 mt-1">
+          {isLong && (
+            <button onClick={() => setExpanded(!expanded)} className="text-xs text-blue-600 hover:underline font-medium">
+              {expanded ? t('problem.showLess') : t('problem.showMore')}
+            </button>
+          )}
+          {truncated && (
+            <span className="text-xs text-amber-600">{t('problem.truncatedNotice')}</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SubmissionDetailsModal({ submission, onClose, t }: { submission: any; onClose: () => void; t: (k: string) => string }) {
   const [details, setDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedTest, setExpandedTest] = useState<number | null>(null);
 
   useEffect(() => {
     if (submission.details) {
@@ -148,18 +177,45 @@ function SubmissionDetailsModal({ submission, onClose, t }: { submission: any; o
                   <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 text-xs font-bold text-gray-500 uppercase">
                     {t('problem.tests')}
                   </div>
-                  <div className="divide-y divide-gray-100 max-h-[300px] overflow-y-auto">
-                    {details.details && details.details.map((d: any, i: number) => (
-                      <div key={i} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition">
-                        <span className="text-sm font-medium text-gray-700">Test #{i + 1}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs text-gray-500 font-mono">{d.execution_time}</span>
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${d.status === 'Accepted' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {d.status}
-                          </span>
+                  <div className="divide-y divide-gray-100 max-h-[420px] overflow-y-auto">
+                    {details.details && details.details.map((d: any, i: number) => {
+                      const canExpand = d.is_sample && (d.expected_output || d.actual_output || d.stderr);
+                      const isOpen = expandedTest === i;
+                      return (
+                        <div key={i}>
+                          <div
+                            className={`px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition ${canExpand ? 'cursor-pointer' : ''}`}
+                            onClick={() => canExpand && setExpandedTest(isOpen ? null : i)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-gray-700">Test #{i + 1}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded border ${d.is_sample ? 'text-blue-600 border-blue-200 bg-blue-50' : 'text-gray-400 border-gray-200 bg-gray-50'}`}>
+                                {d.is_sample ? t('problem.sampleTest') : t('problem.hiddenTest')}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-gray-500 font-mono">{d.execution_time}</span>
+                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${d.status === 'Accepted' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {d.status}
+                              </span>
+                              {canExpand && (
+                                <svg className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              )}
+                            </div>
+                          </div>
+                          {canExpand && isOpen && (
+                            <div className="px-4 pb-4 space-y-3 bg-gray-50/50">
+                              {d.input && <OutputBlock label={t('problem.input')} text={d.input} tone="neutral" t={t} />}
+                              {d.expected_output && <OutputBlock label={t('problem.expectedOutput')} text={d.expected_output} truncated={d.truncated} tone="neutral" t={t} />}
+                              {d.actual_output && <OutputBlock label={t('problem.actualOutput')} text={d.actual_output} truncated={d.truncated} tone={d.status === 'Accepted' ? 'neutral' : 'error'} t={t} />}
+                              {d.stderr && <OutputBlock label={t('problem.errorLabel')} text={d.stderr} truncated={d.truncated} tone="error" t={t} />}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {(!details.details || details.details.length === 0) && (
                       <div className="p-4 text-center text-gray-500 text-sm">{t('problem.noTestDetails')}</div>
                     )}
@@ -611,15 +667,11 @@ function ProblemDetailContent() {
                   </div>
                   {runResult.stdout && (
                     <div className="mb-2">
-                      <div className="text-xs font-bold text-gray-500 uppercase mb-1">{t('problem.outputLabel')}</div>
-                      <pre className="bg-gray-50 border rounded p-3 text-sm font-mono text-gray-800 whitespace-pre-wrap max-h-40 overflow-y-auto">{runResult.stdout}</pre>
+                      <OutputBlock label={t('problem.outputLabel')} text={runResult.stdout} truncated={runResult.stdout_truncated} tone="neutral" t={t} />
                     </div>
                   )}
                   {runResult.stderr && (
-                    <div>
-                      <div className="text-xs font-bold text-red-500 uppercase mb-1">{t('problem.errorLabel')}</div>
-                      <pre className="bg-red-50 border border-red-100 rounded p-3 text-sm font-mono text-red-700 whitespace-pre-wrap max-h-40 overflow-y-auto">{runResult.stderr}</pre>
-                    </div>
+                    <OutputBlock label={t('problem.errorLabel')} text={runResult.stderr} truncated={runResult.stderr_truncated} tone="error" t={t} />
                   )}
                   {!runResult.stdout && !runResult.stderr && (
                     <p className="text-sm text-gray-500">{t('problem.noOutput')}</p>

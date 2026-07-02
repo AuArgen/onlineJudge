@@ -25,4 +25,13 @@ type SubmissionDetail struct {
 	Status        string `json:"status"`
 	ExecutionTime string `json:"execution_time"`
 	IsSample      bool   `json:"is_sample"`
+
+	// Only populated for sample test cases so hidden-test data never leaks
+	// to the client. Values are truncated for display; judging never reads
+	// these fields — it compares the full untruncated output.
+	Input          string `json:"input,omitempty"`
+	ExpectedOutput string `json:"expected_output,omitempty"`
+	ActualOutput   string `json:"actual_output,omitempty"`
+	Stderr         string `json:"stderr,omitempty"`
+	Truncated      bool   `json:"truncated,omitempty"`
 }

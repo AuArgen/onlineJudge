@@ -23,6 +23,7 @@ type Problem struct {
 	ShareToken string `json:"share_token"` // Unique token for link sharing
 
 	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 
 	TestCases    []TestCase           `gorm:"foreignKey:ProblemID;constraint:OnDelete:CASCADE" json:"test_cases,omitempty"`
 	Submissions  []Submission         `gorm:"foreignKey:ProblemID;constraint:OnDelete:CASCADE" json:"-"`

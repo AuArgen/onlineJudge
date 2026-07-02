@@ -187,12 +187,11 @@ func GetProblem(c *fiber.Ctx) error {
 		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
 	}
 
-	// Load test cases and translations
-	if problem.AuthorID == uint(userID) || role == "admin" {
-		database.DB.Preload("TestCases").Preload("Translations").First(&problem, id)
-	} else {
-		database.DB.Preload("TestCases", "is_sample = ?", true).Preload("Translations").First(&problem, id)
-	}
+	// Load translations and only sample test cases — this endpoint backs the
+	// solving page, which must never leak hidden test data, even to the
+	// problem's own author or an admin. Authors/admins manage the full test
+	// case set via the paginated GetTestCases endpoint instead.
+	database.DB.Preload("TestCases", "is_sample = ?", true).Preload("Translations").First(&problem, id)
 
 	// Apply requested language
 	lang := c.Query("lang", "")
@@ -207,6 +206,59 @@ func GetProblem(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(problem)
+}
+
+// GetTestCases godoc
+// @Summary List a problem's test cases (paginated)
+// @Description Returns all test cases (sample and hidden) for the problem author or an admin, paginated to avoid loading everything at once
+// @Tags Problems
+// @Produce json
+// @Param id path int true "Problem ID"
+// @Param page query int false "Page number"
+// @Param limit query int false "Page size"
+// @Success 200 {object} map[string]interface{}
+// @Router /problems/{id}/testcases [get]
+func GetTestCases(c *fiber.Ctx) error {
+	problemID := c.Params("id")
+	userID := c.Locals("user_id").(float64)
+	role := c.Locals("role").(string)
+
+	var problem models.Problem
+	if err := database.DB.First(&problem, problemID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Problem not found"})
+	}
+
+	if problem.AuthorID != uint(userID) && role != "admin" {
+		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
+	}
+
+	page := c.QueryInt("page", 1)
+	limit := c.QueryInt("limit", 10)
+	if limit > 100 {
+		limit = 100
+	}
+	if page < 1 {
+		page = 1
+	}
+
+	var total int64
+	database.DB.Model(&models.TestCase{}).Where("problem_id = ?", problem.ID).Count(&total)
+
+	var testCases []models.TestCase
+	database.DB.Where("problem_id = ?", problem.ID).
+		Order("id asc").
+		Offset((page - 1) * limit).
+		Limit(limit).
+		Find(&testCases)
+
+	totalPages := (total + int64(limit) - 1) / int64(limit)
+	return c.JSON(fiber.Map{
+		"data":        testCases,
+		"total":       total,
+		"page":        page,
+		"limit":       limit,
+		"total_pages": totalPages,
+	})
 }
 
 // CreateProblem godoc

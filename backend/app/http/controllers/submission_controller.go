@@ -125,6 +125,7 @@ func SubmitSolution(c *fiber.Ctx) error {
 	for i, tc := range problem.TestCases {
 		result := results[i]
 		status := "Accepted"
+		// Judging always compares the full, untruncated output.
 		userOutput := strings.TrimSpace(result.Stdout)
 		expectedOutput := strings.TrimSpace(tc.ExpectedOutput)
 
@@ -137,13 +138,30 @@ func SubmitSolution(c *fiber.Ctx) error {
 			fmt.Printf("❌ Test #%d Failed:\nInput: %q\nExpected: %q\nGot: %q\n", i+1, tc.Input, expectedOutput, userOutput)
 		}
 
-		database.DB.Create(&models.SubmissionDetail{
+		detail := models.SubmissionDetail{
 			SubmissionID:  submission.ID,
 			TestCaseID:    tc.ID,
 			Status:        status,
 			ExecutionTime: result.ExecutionTime,
 			IsSample:      tc.IsSample,
-		})
+		}
+
+		// Only sample test cases may reveal their input/expected/actual
+		// output to the client — hidden tests must never leak their data,
+		// so their SubmissionDetail carries the status only.
+		if tc.IsSample {
+			var truncatedAny bool
+			detail.Input, _ = truncateForDisplay(tc.Input)
+			detail.ExpectedOutput, truncatedAny = truncateForDisplay(tc.ExpectedOutput)
+			var t bool
+			detail.ActualOutput, t = truncateForDisplay(result.Stdout)
+			truncatedAny = truncatedAny || t
+			detail.Stderr, t = truncateForDisplay(result.Stderr)
+			truncatedAny = truncatedAny || t
+			detail.Truncated = truncatedAny
+		}
+
+		database.DB.Create(&detail)
 
 		totalTime = result.ExecutionTime
 
@@ -210,11 +228,15 @@ func RunCode(c *fiber.Ctx) error {
 	}
 
 	r := results[0]
+	stdout, stdoutTruncated := truncateForDisplay(r.Stdout)
+	stderr, stderrTruncated := truncateForDisplay(r.Stderr)
 	return c.JSON(fiber.Map{
-		"stdout":         r.Stdout,
-		"stderr":         r.Stderr,
-		"execution_time": r.ExecutionTime,
-		"timed_out":      r.TimedOut,
+		"stdout":           stdout,
+		"stderr":           stderr,
+		"execution_time":   r.ExecutionTime,
+		"timed_out":        r.TimedOut,
+		"stdout_truncated": stdoutTruncated,
+		"stderr_truncated": stderrTruncated,
 	})
 }
 

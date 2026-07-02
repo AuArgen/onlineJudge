@@ -34,6 +34,7 @@ func SetupRoutes(app *fiber.App) {
 	api.Delete("/problems/:id", controllers.DeleteProblem)
 
 	// Test Cases
+	api.Get("/problems/:id/testcases", controllers.GetTestCases)
 	api.Post("/problems/:id/testcases", controllers.AddTestCase)
 	api.Put("/problems/:id/testcases/:testcase_id", controllers.UpdateTestCase)
 	api.Delete("/problems/:id/testcases/:testcase_id", controllers.DeleteTestCase)
@@ -92,6 +93,7 @@ func SetupRoutes(app *fiber.App) {
 	// Admin Routes
 	admin := api.Group("/admin")
 	admin.Get("/problems", controllers.GetPendingProblems)
+	admin.Get("/problems/:id/validate", controllers.ValidateProblem)
 	admin.Post("/problems/:id/approve", controllers.ApproveProblem)
 	admin.Post("/problems/:id/reject", controllers.RejectProblem)
 	admin.Get("/users", controllers.GetAllUsers)

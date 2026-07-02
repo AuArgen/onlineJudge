@@ -172,6 +172,36 @@ func GetPendingProblems(c *fiber.Ctx) error {
 	return c.JSON(problems)
 }
 
+// ValidateProblem godoc
+// @Summary Validate a problem's completeness
+// @Description Checks a problem for missing test cases, samples, limits, etc. so moderators can review it faster
+// @Tags Admin
+// @Param id path int true "Problem ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /admin/problems/{id}/validate [get]
+func ValidateProblem(c *fiber.Ctx) error {
+	role := c.Locals("role").(string)
+	if role != "admin" {
+		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
+	}
+
+	id := c.Params("id")
+	var problem models.Problem
+	if err := database.DB.First(&problem, id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Problem not found"})
+	}
+
+	var testCases []models.TestCase
+	database.DB.Where("problem_id = ?", problem.ID).Find(&testCases)
+
+	issues := validateProblem(problem, testCases)
+	return c.JSON(fiber.Map{
+		"issues":          issues,
+		"ok":              !hasBlockingIssues(issues),
+		"test_case_count": len(testCases),
+	})
+}
+
 // ApproveProblem godoc
 // @Summary Approve a problem
 // @Description Publish a problem
@@ -189,6 +219,12 @@ func ApproveProblem(c *fiber.Ctx) error {
 	var problem models.Problem
 	if err := database.DB.First(&problem, id).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Problem not found"})
+	}
+
+	var testCases []models.TestCase
+	database.DB.Where("problem_id = ?", problem.ID).Find(&testCases)
+	if issues := validateProblem(problem, testCases); hasBlockingIssues(issues) {
+		return c.Status(400).JSON(fiber.Map{"error": "Problem has unresolved issues and cannot be published", "issues": issues})
 	}
 
 	problem.Status = "published"

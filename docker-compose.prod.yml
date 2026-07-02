@@ -20,9 +20,14 @@ services:
       
       - JWT_SECRET=${JWT_SECRET}
       - ADMIN_EMAIL=${ADMIN_EMAIL}
-      
+
       # CORS: Allow requests from your FRONTEND domain
       - ALLOWED_ORIGINS=https://my-frontend.com
+
+      # DeepSeek AI assistant
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DEEPSEEK_API_URL=${DEEPSEEK_API_URL}
+      - DEEPSEEK_MODEL=${DEEPSEEK_MODEL}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:

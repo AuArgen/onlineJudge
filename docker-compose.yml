@@ -16,6 +16,9 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - ADMIN_EMAILS=${ADMIN_EMAILS}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DEEPSEEK_API_URL=${DEEPSEEK_API_URL}
+      - DEEPSEEK_MODEL=${DEEPSEEK_MODEL}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: always
