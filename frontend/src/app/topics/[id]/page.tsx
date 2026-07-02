@@ -7,6 +7,7 @@ import {
   getTopic, generateTopicShareToken, shareTopicByEmail, revokeTopicAccess,
   addTopicContent, deleteTopicContent, addTopicProblem, removeTopicProblem,
   createTopic, getTopicAnalytics, getProblems, aiGenerateTopicProblems,
+  aiGenerateTopicOverview,
 } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -98,6 +99,9 @@ export default function TopicDetailPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
 
+  const [aiOverviewLoading, setAiOverviewLoading] = useState(false);
+  const [aiOverviewError, setAiOverviewError] = useState('');
+
   const [shareToken, setShareToken] = useState('');
   const [shareEmail, setShareEmail] = useState('');
   const [shareLoading, setShareLoading] = useState(false);
@@ -186,6 +190,23 @@ export default function TopicDetailPage() {
       load();
     } catch (err: any) {
       alert(err.message || t('topicForm.error'));
+    }
+  };
+
+  const handleAiOverview = async () => {
+    setAiOverviewLoading(true);
+    setAiOverviewError('');
+    try {
+      const draft = await aiGenerateTopicOverview(id);
+      setContentType('text');
+      setContentValue(draft.content || '');
+      setContentCaption('');
+      setContentError('');
+      setShowAddContent(true);
+    } catch (err: any) {
+      setAiOverviewError(err.message || t('topicDetail.aiOverviewError'));
+    } finally {
+      setAiOverviewLoading(false);
     }
   };
 
@@ -377,15 +398,30 @@ export default function TopicDetailPage() {
           )}
 
           {canEdit && (
-            <button
-              onClick={() => setShowAddContent(true)}
-              className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-blue-400 hover:text-blue-600 transition text-sm font-medium"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              {t('topicDetail.addContent')}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => setShowAddContent(true)}
+                className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-blue-400 hover:text-blue-600 transition text-sm font-medium"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                {t('topicDetail.addContent')}
+              </button>
+              <button
+                onClick={handleAiOverview}
+                disabled={aiOverviewLoading}
+                className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-purple-300 rounded-xl text-purple-600 hover:border-purple-400 hover:bg-purple-50 transition text-sm font-medium disabled:opacity-50"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                </svg>
+                {aiOverviewLoading ? t('topicDetail.aiOverviewGenerating') : t('topicDetail.aiOverviewBtn')}
+              </button>
+            </div>
+          )}
+          {canEdit && aiOverviewError && (
+            <p className="text-xs text-red-600">{aiOverviewError}</p>
           )}
 
           {topic.children && topic.children.length > 0 && (

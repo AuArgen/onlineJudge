@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createTopic } from '@/lib/api';
+import { createTopic, addTopicContent, aiSuggestTopic } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function CreateTopicPage() {
@@ -14,6 +14,28 @@ export default function CreateTopicPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [showAiAssistant, setShowAiAssistant] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [aiDescription, setAiDescription] = useState('');
+
+  const handleAiSuggest = async () => {
+    if (!aiPrompt.trim()) return;
+    setAiLoading(true);
+    setAiError('');
+    try {
+      const suggestion = await aiSuggestTopic(aiPrompt.trim());
+      setTitle(suggestion.title || title);
+      setAiDescription(suggestion.description || '');
+      setShowAiAssistant(false);
+    } catch (err: any) {
+      setAiError(err.message || t('topicForm.aiError'));
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) { setError(t('topicForm.nameRequired')); return; }
@@ -21,6 +43,13 @@ export default function CreateTopicPage() {
     setError('');
     try {
       const topic = await createTopic({ title: title.trim(), visibility });
+      if (aiDescription.trim()) {
+        try {
+          await addTopicContent(topic.id, { type: 'text', content: aiDescription.trim() });
+        } catch {
+          // Topic was already created; ignore overview save failure.
+        }
+      }
       router.push(`/topics/${topic.id}`);
     } catch (err: any) {
       setError(err.message || t('topicForm.error'));
@@ -38,7 +67,50 @@ export default function CreateTopicPage() {
         {t('topicForm.backToTopics')}
       </Link>
 
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('topicForm.createTitle')}</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">{t('topicForm.createTitle')}</h1>
+        <button
+          type="button"
+          onClick={() => setShowAiAssistant(!showAiAssistant)}
+          className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 font-medium border border-purple-200 rounded-lg px-3 py-2 hover:bg-purple-50 transition"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+          </svg>
+          {t('topicForm.aiAssistant')}
+        </button>
+      </div>
+
+      {showAiAssistant && (
+        <div className="mb-5 bg-purple-50 border border-purple-200 rounded-xl p-5 space-y-3">
+          <p className="text-sm text-purple-900 font-medium">{t('topicForm.aiAssistantHint')}</p>
+          <textarea
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            rows={3}
+            placeholder={t('topicForm.aiAssistantPlaceholder')}
+            className="w-full border border-purple-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none bg-white"
+          />
+          {aiError && <p className="text-xs text-red-600">{aiError}</p>}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleAiSuggest}
+              disabled={aiLoading || !aiPrompt.trim()}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition"
+            >
+              {aiLoading ? t('topicForm.aiGenerating') : t('topicForm.aiAssistantBtn')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAiAssistant(false)}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              {t('topicForm.cancel')}
+            </button>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
         {/* Title */}
@@ -96,6 +168,22 @@ export default function CreateTopicPage() {
             </button>
           </div>
         </div>
+
+        {aiDescription && (
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-xs font-medium text-purple-700">{t('topicForm.aiOverviewPreview')}</p>
+              <button
+                type="button"
+                onClick={() => setAiDescription('')}
+                className="text-xs text-purple-500 hover:text-purple-700"
+              >
+                {t('topicDetail.remove')}
+              </button>
+            </div>
+            <p className="text-xs text-gray-600 whitespace-pre-wrap">{aiDescription}</p>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">

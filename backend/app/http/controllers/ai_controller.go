@@ -141,3 +141,95 @@ func GenerateTopicProblems(c *fiber.Ctx) error {
 
 	return c.JSON(created)
 }
+
+// DraftProblem godoc
+// @Summary AI: draft a new problem from an idea
+// @Description Uses DeepSeek to draft a single problem statement from a free-form idea, for prefilling the create-problem form. Does not write to the database.
+// @Tags AI
+// @Accept json
+// @Produce json
+// @Success 200 {object} ai.ProblemDraft
+// @Router /ai/problems/draft [post]
+func DraftProblem(c *fiber.Ctx) error {
+	type Request struct {
+		Prompt     string `json:"prompt"`
+		Difficulty string `json:"difficulty"`
+	}
+	var req Request
+	if err := c.BodyParser(&req); err != nil || strings.TrimSpace(req.Prompt) == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "prompt is required"})
+	}
+	if !validDifficulties[req.Difficulty] {
+		return c.Status(400).JSON(fiber.Map{"error": "difficulty must be easy, medium or hard"})
+	}
+
+	client := ai.NewClient()
+	draft, err := client.DraftProblem(req.Prompt, req.Difficulty)
+	if err != nil {
+		return c.Status(502).JSON(fiber.Map{"error": "AI request failed: " + err.Error()})
+	}
+
+	return c.JSON(draft)
+}
+
+// SuggestTopic godoc
+// @Summary AI: suggest a topic title and description from an idea
+// @Description Uses DeepSeek to draft a topic title and short overview from a rough idea, for prefilling the create-topic form. Does not write to the database.
+// @Tags AI
+// @Accept json
+// @Produce json
+// @Success 200 {object} ai.TopicSuggestion
+// @Router /ai/topics/suggest [post]
+func SuggestTopic(c *fiber.Ctx) error {
+	type Request struct {
+		Prompt string `json:"prompt"`
+	}
+	var req Request
+	if err := c.BodyParser(&req); err != nil || strings.TrimSpace(req.Prompt) == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "prompt is required"})
+	}
+
+	client := ai.NewClient()
+	suggestion, err := client.SuggestTopic(req.Prompt)
+	if err != nil {
+		return c.Status(502).JSON(fiber.Map{"error": "AI request failed: " + err.Error()})
+	}
+
+	return c.JSON(suggestion)
+}
+
+// GenerateTopicOverview godoc
+// @Summary AI: draft an overview text block for a topic
+// @Description Uses DeepSeek to draft an overview text for an existing topic, using its title and existing content as context (topic owner or admin only). Does not write to the database.
+// @Tags AI
+// @Produce json
+// @Param id path int true "Topic ID"
+// @Success 200 {object} ai.OverviewDraft
+// @Router /ai/topics/{id}/overview [post]
+func GenerateTopicOverview(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(float64)
+	role := c.Locals("role").(string)
+
+	var topic models.Topic
+	if err := database.DB.First(&topic, c.Params("id")).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Topic not found"})
+	}
+	if topic.AuthorID != uint(userID) && role != "admin" {
+		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
+	}
+
+	var contentTexts []string
+	database.DB.Model(&models.TopicContent{}).
+		Where("topic_id = ? AND type = ?", topic.ID, "text").
+		Order("order_num").
+		Pluck("content", &contentTexts)
+	context := strings.Join(contentTexts, "\n")
+
+	client := ai.NewClient()
+	draft, err := client.GenerateOverview(topic.Title, context)
+	if err != nil {
+		return c.Status(502).JSON(fiber.Map{"error": "AI request failed: " + err.Error()})
+	}
+
+	return c.JSON(draft)
+}

@@ -229,3 +229,104 @@ The "problems" array must contain exactly N items. Do not include any text outsi
 	}
 	return result.Problems, nil
 }
+
+// ProblemDraft is a single AI-drafted problem statement for the "create
+// problem" page, before it has been saved anywhere.
+type ProblemDraft struct {
+	Title       string  `json:"title"`
+	Description string  `json:"description"`
+	Difficulty  string  `json:"difficulty"`
+	TimeLimit   float64 `json:"time_limit"`
+	MemoryLimit int     `json:"memory_limit"`
+}
+
+// DraftProblem drafts a single problem statement from a free-form idea
+// typed by the author, at the requested difficulty.
+func (c *Client) DraftProblem(prompt, difficulty string) (*ProblemDraft, error) {
+	rubric := map[string]string{
+		"easy":   "easy: relies on basic loops, conditionals, arrays/strings and simple math — solvable by a beginner.",
+		"medium": "medium: standard algorithms such as sorting, greedy strategies, basic dynamic programming or basic graph traversal.",
+		"hard":   "hard: advanced dynamic programming, advanced graph algorithms, or non-trivial data structures.",
+	}
+
+	system := fmt.Sprintf(`You are a professional competitive-programming problem setter working for an online judge platform.
+Given a short idea or theme from the author, draft one original, self-contained problem statement in the style of a well-formed competitive programming problem: a clear title, a description with a short story/context, "Input format", "Output format", "Constraints" and at least one worked "Example" (input/output shown as plain text within the description, not as executable test data).
+Difficulty rubric for "%s": %s
+Write the title/description in Russian.
+Suggest a reasonable time_limit (seconds, float) and memory_limit (MB, int) for the problem given its difficulty.
+Respond with STRICT JSON only, matching exactly this shape:
+{"title": "...", "description": "...", "difficulty": "%s", "time_limit": 1.0, "memory_limit": 256}
+Do not include any text outside the JSON object.`, difficulty, rubric[difficulty], difficulty)
+
+	user := fmt.Sprintf("Idea/theme: %s", prompt)
+
+	raw, err := c.chatCompletion(system, user)
+	if err != nil {
+		return nil, err
+	}
+
+	var result ProblemDraft
+	if err := json.Unmarshal([]byte(raw), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse AI response as JSON: %w", err)
+	}
+	return &result, nil
+}
+
+// TopicSuggestion is an AI-drafted title/description pair for a new topic.
+type TopicSuggestion struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
+// SuggestTopic drafts a clean topic title and a short overview description
+// from a rough idea typed by the author.
+func (c *Client) SuggestTopic(prompt string) (*TopicSuggestion, error) {
+	system := `You are a curriculum designer for a competitive-programming online judge platform.
+Given a rough idea for a learning topic (a chapter/category of problems, e.g. "graphs" or "dynamic programming"), produce:
+1. A short, clean, well-formed topic title in Russian.
+2. A short overview description (2-4 sentences, Russian) explaining what the topic covers and why it matters, suitable as the topic's introductory text block.
+Respond with STRICT JSON only, matching exactly this shape:
+{"title": "...", "description": "..."}
+Do not include any text outside the JSON object.`
+
+	user := fmt.Sprintf("Idea: %s", prompt)
+
+	raw, err := c.chatCompletion(system, user)
+	if err != nil {
+		return nil, err
+	}
+
+	var result TopicSuggestion
+	if err := json.Unmarshal([]byte(raw), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse AI response as JSON: %w", err)
+	}
+	return &result, nil
+}
+
+// OverviewDraft is an AI-drafted overview text block for an existing topic.
+type OverviewDraft struct {
+	Content string `json:"content"`
+}
+
+// GenerateOverview drafts an overview text block for a topic, given its
+// title and any existing content/subtopics as context.
+func (c *Client) GenerateOverview(topicTitle, context string) (*OverviewDraft, error) {
+	system := `You are a curriculum designer for a competitive-programming online judge platform.
+Given a topic's title and any existing content already written for it, draft a clear, well-structured overview text (plain text, a few short paragraphs, Russian) explaining what the topic covers, key ideas/techniques a learner should know, and how it's typically applied. It will be shown as the topic's introductory text block, so it must be self-contained and must not duplicate the existing content verbatim.
+Respond with STRICT JSON only, matching exactly this shape:
+{"content": "..."}
+Do not include any text outside the JSON object.`
+
+	user := fmt.Sprintf("Topic title: %s\nExisting content (may be empty):\n%s", topicTitle, context)
+
+	raw, err := c.chatCompletion(system, user)
+	if err != nil {
+		return nil, err
+	}
+
+	var result OverviewDraft
+	if err := json.Unmarshal([]byte(raw), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse AI response as JSON: %w", err)
+	}
+	return &result, nil
+}

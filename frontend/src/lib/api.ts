@@ -90,6 +90,44 @@ export async function aiGenerateTopicProblems(topicId: number | string, count: n
   return res.json();
 }
 
+export async function aiDraftProblem(prompt: string, difficulty: string) {
+  const res = await fetch(`${getBaseUrl()}/ai/problems/draft`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ prompt, difficulty }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'AI draft failed');
+  }
+  return res.json();
+}
+
+export async function aiSuggestTopic(prompt: string) {
+  const res = await fetch(`${getBaseUrl()}/ai/topics/suggest`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ prompt }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'AI suggestion failed');
+  }
+  return res.json();
+}
+
+export async function aiGenerateTopicOverview(topicId: number | string) {
+  const res = await fetch(`${getBaseUrl()}/ai/topics/${topicId}/overview`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'AI overview generation failed');
+  }
+  return res.json();
+}
+
 // ---- Topics ----
 
 export async function getTopics(filter?: string) {

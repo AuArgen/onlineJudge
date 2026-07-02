@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createProblem } from '@/lib/api';
+import { createProblem, aiDraftProblem } from '@/lib/api';
 import Editor from '@monaco-editor/react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -19,6 +19,32 @@ export default function CreateProblem() {
     author_language: 'python'
   });
 
+  const [showAiAssistant, setShowAiAssistant] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+
+  const handleAiDraft = async () => {
+    if (!aiPrompt.trim()) return;
+    setAiLoading(true);
+    setAiError('');
+    try {
+      const draft = await aiDraftProblem(aiPrompt.trim(), formData.difficulty);
+      setFormData({
+        ...formData,
+        title: draft.title || formData.title,
+        description: draft.description || formData.description,
+        time_limit: draft.time_limit || formData.time_limit,
+        memory_limit: draft.memory_limit || formData.memory_limit,
+      });
+      setShowAiAssistant(false);
+    } catch (err: any) {
+      setAiError(err.message || t('createProblem.aiError'));
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -31,7 +57,51 @@ export default function CreateProblem() {
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-4">
-      <h1 className="text-3xl font-bold mb-8">{t('createProblem.title')}</h1>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold">{t('createProblem.title')}</h1>
+        <button
+          type="button"
+          onClick={() => setShowAiAssistant(!showAiAssistant)}
+          className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 font-medium border border-purple-200 rounded-lg px-3 py-2 hover:bg-purple-50 transition"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+          </svg>
+          {t('createProblem.aiAssistant')}
+        </button>
+      </div>
+
+      {showAiAssistant && (
+        <div className="mb-6 bg-purple-50 border border-purple-200 rounded-xl p-5 space-y-3">
+          <p className="text-sm text-purple-900 font-medium">{t('createProblem.aiAssistantHint')}</p>
+          <textarea
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            rows={3}
+            placeholder={t('createProblem.aiAssistantPlaceholder')}
+            className="w-full border border-purple-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none bg-white"
+          />
+          {aiError && <p className="text-xs text-red-600">{aiError}</p>}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleAiDraft}
+              disabled={aiLoading || !aiPrompt.trim()}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition"
+            >
+              {aiLoading ? t('createProblem.aiGenerating') : t('createProblem.aiAssistantBtn')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAiAssistant(false)}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              {t('topicForm.cancel')}
+            </button>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-6">

@@ -84,6 +84,11 @@ func SetupRoutes(app *fiber.App) {
 	// Topic analytics
 	api.Get("/topics/:id/analytics", controllers.GetTopicAnalytics)
 
+	// AI assistants (any authenticated user; permission checks happen inside the controllers)
+	api.Post("/ai/problems/draft", controllers.DraftProblem)
+	api.Post("/ai/topics/suggest", controllers.SuggestTopic)
+	api.Post("/ai/topics/:id/overview", controllers.GenerateTopicOverview)
+
 	// Admin Routes
 	admin := api.Group("/admin")
 	admin.Get("/problems", controllers.GetPendingProblems)
