@@ -9,7 +9,7 @@ const dict: Record<string, Record<LangCode, string>> = {
   'footer.rights': { ru: 'Все права защищены.', ky: 'Бардык укуктар корголгон.', en: 'All rights reserved.' },
 
   // Navbar
-  'nav.problems': { ru: 'Задачи', ky: 'Масе', en: 'Problems' },
+  'nav.problems': { ru: 'Задачи', ky: 'Маселелер', en: 'Problems' },
   'nav.contests': { ru: 'Соревнования', ky: 'Байгелер', en: 'Contests' },
   'nav.topics': { ru: 'Темы', ky: 'Темалар', en: 'Topics' },
   'nav.leaderboard': { ru: 'Рейтинг', ky: 'Рейтинг', en: 'Leaderboard' },
@@ -24,12 +24,12 @@ const dict: Record<string, Record<LangCode, string>> = {
   'home.heroTitle2': { ru: 'навыки кодинга', ky: 'коддоо жөндөмүңдү', en: 'coding skills' },
   'home.heroDesc': {
     ru: 'Решай алгоритмические задачи, изучай новые языки программирования и готовься к техническим собеседованиям в IT-гиганты.',
-    ky: 'Алгоритмдик масе чечиңиз, жаңы программалоо тилдерин үйрөнүңүз жана IT-гиганттарга техникалык интервьюга даярданыңыз.',
+    ky: 'Алгоритмдик маселе чечиңиз, жаңы программалоо тилдерин үйрөнүңүз жана IT-гиганттарга техникалык интервьюга даярданыңыз.',
     en: 'Solve algorithmic problems, learn new programming languages, and prepare for technical interviews at top IT companies.',
   },
   'home.startSolving': { ru: 'Начать решать', ky: 'Чечүүнү баштоо', en: 'Start solving' },
   'home.register': { ru: 'Регистрация', ky: 'Каттоо', en: 'Register' },
-  'home.stats.problems': { ru: 'Задач разной сложности', ky: 'Ар кандай татаалдыктагы масе', en: 'Problems of various difficulties' },
+  'home.stats.problems': { ru: 'Задач разной сложности', ky: 'Ар кандай татаалдыктагы маселе', en: 'Problems of various difficulties' },
   'home.stats.languages': { ru: 'Поддерживаемых языков', ky: 'Колдоого алынган тилдер', en: 'Supported languages' },
   'home.stats.instant': { ru: 'Мгновенная проверка', ky: 'Дароо текшерүү', en: 'Instant checking' },
   'home.whyUs': { ru: 'Почему выбирают нас?', ky: 'Эмне үчүн бизди тандайт?', en: 'Why choose us?' },
@@ -51,9 +51,9 @@ const dict: Record<string, Record<LangCode, string>> = {
     ky: 'Прогрессиңизди байкаңыз, каталарды талдаңыз жана алгоритмдик жөндөмүңүздү жакшыртыңыз.',
     en: 'Track your progress, analyze mistakes and improve your algorithmic skills.',
   },
-  'home.latestProblems': { ru: 'Последние задачи', ky: 'Акыркы маселе', en: 'Latest Problems' },
-  'home.allProblems': { ru: 'Все задачи', ky: 'Бардык маселе', en: 'All Problems' },
-  'home.noProblems': { ru: 'Нет доступных задач.', ky: 'Жеткиликтүү маселе жок.', en: 'No problems available.' },
+  'home.latestProblems': { ru: 'Последние задачи', ky: 'Акыркы маселеле', en: 'Latest Problems' },
+  'home.allProblems': { ru: 'Все задачи', ky: 'Бардык маселеле', en: 'All Problems' },
+  'home.noProblems': { ru: 'Нет доступных задач.', ky: 'Жеткиликтүү маселеле жок.', en: 'No problems available.' },
 
   // Problems page
   'problems.title': { ru: 'Задачи', ky: 'Маселе', en: 'Problems' },
@@ -70,7 +70,7 @@ const dict: Record<string, Record<LangCode, string>> = {
 
   // Problem detail
   'problem.backToContest': { ru: '← Назад к соревнованию', ky: '← Байгеге кайтуу', en: '← Back to contest' },
-  'problem.allProblems': { ru: '← Все задачи', ky: '← Бардык масе', en: '← All problems' },
+  'problem.allProblems': { ru: '← Все задачи', ky: '← Бардык маселе', en: '← All problems' },
   'problem.editProblem': { ru: 'Редактировать задачу', ky: 'Маселени өзгөртүү', en: 'Edit problem' },
   'problem.examples': { ru: 'Примеры', ky: 'Мисалдар', en: 'Examples' },
   'problem.input': { ru: 'Ввод', ky: 'Киргизүү', en: 'Input' },
@@ -116,16 +116,16 @@ const dict: Record<string, Record<LangCode, string>> = {
 
   // Dashboard
   'dashboard.title': { ru: 'Панель управления', ky: 'Башкаруу панели', en: 'Dashboard' },
-  'dashboard.createProblem': { ru: '+ Создать задачу', ky: '+ Маселе түзүү', en: '+ Create problem' },
+  'dashboard.createProblem': { ru: '+ Создать задачу', ky: '+ маселеле түзүү', en: '+ Create problem' },
   'dashboard.createContest': { ru: '+ Создать соревнование', ky: '+ Байге түзүү', en: '+ Create contest' },
-  'dashboard.myProblems': { ru: 'Мои задачи', ky: 'Менин маселем', en: 'My problems' },
+  'dashboard.myProblems': { ru: 'Мои задачи', ky: 'Менин маселелем', en: 'My problems' },
   'dashboard.myContests': { ru: 'Мои соревнования', ky: 'Менин байгелерим', en: 'My contests' },
   'dashboard.name': { ru: 'Название', ky: 'Аталышы', en: 'Name' },
   'dashboard.status': { ru: 'Статус', ky: 'Абал', en: 'Status' },
   'dashboard.solved': { ru: 'Решили', ky: 'Чешишти', en: 'Solved' },
   'dashboard.date': { ru: 'Дата', ky: 'Дата', en: 'Date' },
   'dashboard.actions': { ru: 'Действия', ky: 'Аракеттер', en: 'Actions' },
-  'dashboard.noProblems': { ru: 'У вас пока нет задач.', ky: 'Сизде азырча маселе жок.', en: 'You have no problems yet.' },
+  'dashboard.noProblems': { ru: 'У вас пока нет задач.', ky: 'Сизде азырча маселеле жок.', en: 'You have no problems yet.' },
   'dashboard.noContests': { ru: 'У вас пока нет соревнований.', ky: 'Сизде азырча байге жок.', en: 'You have no contests yet.' },
   'dashboard.edit': { ru: 'Изменить', ky: 'Өзгөртүү', en: 'Edit' },
   'dashboard.delete': { ru: 'Удалить', ky: 'Жок кылуу', en: 'Delete' },
@@ -139,7 +139,7 @@ const dict: Record<string, Record<LangCode, string>> = {
   // Leaderboard
   'leaderboard.title': { ru: 'Рейтинг', ky: 'Рейтинг', en: 'Leaderboard' },
   'leaderboard.user': { ru: 'Пользователь', ky: 'Колдонуучу', en: 'User' },
-  'leaderboard.solvedProblems': { ru: 'Решено задач', ky: 'Чечилген маселе', en: 'Problems solved' },
+  'leaderboard.solvedProblems': { ru: 'Решено задач', ky: 'Чечилген маселеле', en: 'Problems solved' },
 
   // Contests list
   'contests.title': { ru: 'Соревнования', ky: 'Байгелер', en: 'Contests' },
@@ -169,7 +169,7 @@ const dict: Record<string, Record<LangCode, string>> = {
   // Profile
   'profile.loading': { ru: 'Загрузка профиля...', ky: 'Профиль жүктөлүүдө...', en: 'Loading profile...' },
   'profile.notFound': { ru: 'Пользователь не найден', ky: 'Колдонуучу табылган жок', en: 'User not found' },
-  'profile.myProblems': { ru: 'Мои задачи', ky: 'Менин масе', en: 'My problems' },
+  'profile.myProblems': { ru: 'Мои задачи', ky: 'Менин маселе', en: 'My problems' },
   'profile.solutionHistory': { ru: 'История решений', ky: 'Чечимдер тарыхы', en: 'Solution history' },
   'profile.problem': { ru: 'Задача', ky: 'Маселе', en: 'Problem' },
   'profile.status': { ru: 'Статус', ky: 'Абал', en: 'Status' },
@@ -223,13 +223,13 @@ const dict: Record<string, Record<LangCode, string>> = {
   'admin.view': { ru: 'Просмотр →', ky: 'Кароо →', en: 'View →' },
   'admin.activity': { ru: 'Активность', ky: 'Активность', en: 'Activity' },
   'admin.last30Days': { ru: 'Последние 30 дней', ky: 'Акыркы 30 күн', en: 'Last 30 days' },
-  'admin.pendingProblemsTable': { ru: 'Задачи ожидающие модерации', ky: 'Модерация күтүүдөгү маселе', en: 'Problems awaiting moderation' },
+  'admin.pendingProblemsTable': { ru: 'Задачи ожидающие модерации', ky: 'Модерация күтүүдөгү маселеле', en: 'Problems awaiting moderation' },
   'admin.id': { ru: 'ID', ky: 'ID', en: 'ID' },
   'admin.titleCol': { ru: 'Название', ky: 'Аталышы', en: 'Title' },
   'admin.authorId': { ru: 'ID автора', ky: 'Автор ID', en: 'Author ID' },
   'admin.date': { ru: 'Дата', ky: 'Дата', en: 'Date' },
   'admin.action': { ru: 'Действие', ky: 'Аракет', en: 'Action' },
-  'admin.noProblems': { ru: 'Нет задач для модерации.', ky: 'Модерацияга маселе жок.', en: 'No problems awaiting moderation.' },
+  'admin.noProblems': { ru: 'Нет задач для модерации.', ky: 'Модерацияга маселеле жок.', en: 'No problems awaiting moderation.' },
   'admin.review': { ru: 'Проверить →', ky: 'Текшерүү →', en: 'Review →' },
 
   // Admin users page
@@ -256,8 +256,8 @@ const dict: Record<string, Record<LangCode, string>> = {
   'adminReview.rejectPlaceholder': { ru: 'Причина отклонения (если нужно)', ky: 'Четтетүү себеби (зарыл болсо)', en: 'Rejection reason (if needed)' },
   'adminReview.reject': { ru: 'Отклонить', ky: 'Четтетүү', en: 'Reject' },
   'adminReview.approve': { ru: 'Опубликовать', ky: 'Жарыялоо', en: 'Approve' },
-  'adminReview.confirmApprove': { ru: 'Опубликовать эту задачу?', ky: 'Бул маселени жарыялайсызбы?', en: 'Publish this problem?' },
-  'adminReview.confirmReject': { ru: 'Отклонить эту задачу?', ky: 'Бул маселени четтетесизби?', en: 'Reject this problem?' },
+  'adminReview.confirmApprove': { ru: 'Опубликовать эту задачу?', ky: 'Бул маселелени жарыялайсызбы?', en: 'Publish this problem?' },
+  'adminReview.confirmReject': { ru: 'Отклонить эту задачу?', ky: 'Бул маселелени четтетесизби?', en: 'Reject this problem?' },
   'adminReview.requireReason': { ru: 'Укажите причину отклонения.', ky: 'Четтетүү себебин жазыңыз.', en: 'Please provide a rejection reason.' },
 
   // Create contest page
@@ -396,7 +396,7 @@ const dict: Record<string, Record<LangCode, string>> = {
   'adminActivity.total': { ru: 'Всего ответов', ky: 'Жалпы жооп', en: 'Total submissions' },
   'adminActivity.accepted': { ru: 'Принято', ky: 'Кабыл алынган', en: 'Accepted' },
   'adminActivity.activeUsers': { ru: 'Активных пользователей', ky: 'Активдүү колдонуучу', en: 'Active users' },
-  'adminActivity.problemsAttempted': { ru: 'Задач решалось', ky: 'Аракет кылынган маселе', en: 'Problems attempted' },
+  'adminActivity.problemsAttempted': { ru: 'Задач решалось', ky: 'Аракет кылынган маселеле', en: 'Problems attempted' },
   'adminActivity.statusLabel': { ru: 'Статус:', ky: 'Статус:', en: 'Status:' },
   'adminActivity.all': { ru: 'Все', ky: 'Баары', en: 'All' },
   'adminActivity.loading': { ru: 'Загрузка...', ky: 'Жүктөлүүдө...', en: 'Loading...' },
@@ -415,7 +415,7 @@ const dict: Record<string, Record<LangCode, string>> = {
   'adminUserDetail.admin': { ru: 'Админ', ky: 'Админ', en: 'Admin' },
   'adminUserDetail.user': { ru: 'Пользователь', ky: 'Колдонуучу', en: 'User' },
   'adminUserDetail.registered': { ru: 'Зарегистрирован:', ky: 'Катталган:', en: 'Registered:' },
-  'adminUserDetail.solved': { ru: 'Решено задач', ky: 'Чечилген маселе', en: 'Problems solved' },
+  'adminUserDetail.solved': { ru: 'Решено задач', ky: 'Чечилген маселеле', en: 'Problems solved' },
   'adminUserDetail.submissions': { ru: 'Отправлено', ky: 'Жооп жиберилген', en: 'Submissions' },
   'adminUserDetail.lastActive': { ru: 'Последняя активность', ky: 'Акыркы активдүүлүк', en: 'Last active' },
   'adminUserDetail.recentSubmissions': { ru: 'Последние 20 ответов', ky: 'Акыркы 20 жооп', en: 'Last 20 submissions' },
