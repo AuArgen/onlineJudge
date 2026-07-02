@@ -2,9 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createProblem, aiDraftProblem } from '@/lib/api';
+import { createProblem, aiDraftProblem, upsertProblemTranslation } from '@/lib/api';
 import Editor from '@monaco-editor/react';
 import { useLanguage } from '@/contexts/LanguageContext';
+
+const TRANSLATION_LANGS = [
+  { code: 'ky', label: 'Кыргызча', flag: '🇰🇬' },
+  { code: 'en', label: 'English', flag: '🇬🇧' },
+];
 
 export default function CreateProblem() {
   const router = useRouter();
@@ -18,6 +23,10 @@ export default function CreateProblem() {
     author_source_code: '// Write correct solution here',
     author_language: 'python'
   });
+  const [translations, setTranslations] = useState<Record<string, { title: string; description: string }>>({});
+  const [activeLang, setActiveLang] = useState('ky');
+  const [aiTranslationsIncluded, setAiTranslationsIncluded] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [showAiAssistant, setShowAiAssistant] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
@@ -37,6 +46,14 @@ export default function CreateProblem() {
         time_limit: draft.time_limit || formData.time_limit,
         memory_limit: draft.memory_limit || formData.memory_limit,
       });
+      if (draft.translations?.ky || draft.translations?.en) {
+        setTranslations(prev => ({
+          ...prev,
+          ...(draft.translations?.ky ? { ky: draft.translations.ky } : {}),
+          ...(draft.translations?.en ? { en: draft.translations.en } : {}),
+        }));
+        setAiTranslationsIncluded(true);
+      }
       setShowAiAssistant(false);
     } catch (err: any) {
       setAiError(err.message || t('createProblem.aiError'));
@@ -47,11 +64,21 @@ export default function CreateProblem() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       const problem = await createProblem(formData);
+      // Save any filled-in translations right away so they aren't lost
+      // between create and the edit page's own translation form.
+      await Promise.all(
+        TRANSLATION_LANGS
+          .filter(l => translations[l.code]?.title && translations[l.code]?.description)
+          .map(l => upsertProblemTranslation(problem.id, l.code, translations[l.code]).catch(console.error))
+      );
       router.push(`/problems/${problem.id}/edit`);
     } catch (error) {
       alert(t('createProblem.error'));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -99,6 +126,12 @@ export default function CreateProblem() {
               {t('topicForm.cancel')}
             </button>
           </div>
+        </div>
+      )}
+
+      {aiTranslationsIncluded && (
+        <div className="mb-6 bg-green-50 border border-green-200 rounded-lg px-4 py-2 text-sm text-green-800">
+          {t('createProblem.aiTranslationsIncluded')}
         </div>
       )}
 
@@ -192,9 +225,52 @@ export default function CreateProblem() {
           </div>
         </div>
 
+        {/* Translations */}
+        <div className="bg-white shadow rounded-lg p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">{t('createProblem.translationsTitle')}</h3>
+          <p className="text-xs text-gray-500 mb-4">{t('createProblem.translationsNote')}</p>
+          <div className="flex gap-2 mb-4">
+            {TRANSLATION_LANGS.map(l => (
+              <button
+                key={l.code}
+                type="button"
+                onClick={() => setActiveLang(l.code)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium border transition ${activeLang === l.code ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'}`}
+              >
+                {l.flag} {l.label} {translations[l.code] ? '✓' : ''}
+              </button>
+            ))}
+          </div>
+          {TRANSLATION_LANGS.filter(l => l.code === activeLang).map(l => (
+            <div key={l.code} className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">{t('editProblem.titleLabel')} ({l.label})</label>
+                <input
+                  type="text"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2"
+                  value={translations[l.code]?.title || ''}
+                  onChange={e => setTranslations(prev => ({ ...prev, [l.code]: { ...prev[l.code], title: e.target.value, description: prev[l.code]?.description || '' } }))}
+                  placeholder={`${t('editProblem.titleLabel')} (${l.label})`}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">{t('editProblem.descLabel')} ({l.label})</label>
+                <textarea
+                  rows={5}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2 font-mono text-sm"
+                  value={translations[l.code]?.description || ''}
+                  onChange={e => setTranslations(prev => ({ ...prev, [l.code]: { title: prev[l.code]?.title || '', description: e.target.value } }))}
+                  placeholder={`${t('editProblem.descLabel')} (${l.label}, Markdown)`}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
         <button
           type="submit"
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          disabled={submitting}
+          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
         >
           {t('createProblem.create')}
         </button>

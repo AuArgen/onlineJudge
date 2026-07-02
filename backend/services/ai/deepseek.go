@@ -121,6 +121,11 @@ func (c *Client) chatCompletion(system, user string) (string, error) {
 	return parsed.Choices[0].Message.Content, nil
 }
 
+// descriptionFormatGuidance instructs the model to write every problem
+// description (base text and each translation) as Markdown with explicit,
+// bolded Input/Output/Constraints sections rather than a bare paragraph.
+const descriptionFormatGuidance = "Format every \"description\" (base text and each translation) as Markdown with this exact structure: a short narrative paragraph, a blank line, a bolded input-format section header followed by a bullet list describing each input line/value, a blank line, a bolded output-format section header followed by a bullet list describing the output, and a blank line, a bolded constraints section header followed by a bullet list of bounds, each written with backticks (for example, `1 <= N <= 10^6`). Wrap variable names and numbers in backticks throughout. Use these header labels depending on the description's language: Russian - \"**Формат ввода (Input):**\", \"**Формат вывода (Output):**\", \"**Ограничения:**\"; Kyrgyz - \"**Кирүү форматы (Input):**\", \"**Чыгуу форматы (Output):**\", \"**Чектөөлөр:**\"; English - \"**Input format:**\", \"**Output format:**\", \"**Constraints:**\". Every translation must follow this same structure with its own language's headers, not just the base text."
+
 // LocalizedText holds a title/description pair for a single language.
 type LocalizedText struct {
 	Title       string `json:"title"`
@@ -138,8 +143,9 @@ type CorrectResult struct {
 func (c *Client) CorrectAndTranslate(title, description string) (*CorrectResult, error) {
 	system := `You are a professional competitive-programming problem setter and translator working for an online judge platform.
 Given a draft problem title and description, you must:
-1. Correct grammar, spelling, clarity and formatting, keeping the statement's original language and meaning intact. Preserve structure such as "Input format", "Output format", "Constraints" and "Example" sections if present, and any Markdown formatting.
-2. Translate the corrected statement into Russian (ru), Kyrgyz (ky) and English (en), each faithful in meaning and equally professional in tone.
+1. Correct grammar, spelling and clarity, keeping the statement's original language and meaning intact. If the description is missing its Input format, Output format or Constraints sections, add them (inferring reasonable content from the description) rather than leaving them out.
+2. ` + descriptionFormatGuidance + `
+3. Translate the corrected statement into Russian (ru), Kyrgyz (ky) and English (en), each faithful in meaning and equally professional in tone.
 Respond with STRICT JSON only, matching exactly this shape:
 {
   "corrected": {"title": "...", "description": "..."},
@@ -189,7 +195,8 @@ func (c *Client) GenerateProblems(topicTitle, topicContext string, count int, di
 	}
 
 	system := fmt.Sprintf(`You are a professional competitive-programming problem setter working for an online judge platform.
-Given a topic, you must draft exactly N distinct, original problem statements at a specific difficulty level, in the style of a well-formed competitive programming problem: a clear title, a description with a story/context, "Input format", "Output format", "Constraints" and at least one worked "Example" (input/output shown as plain text within the description, not as executable test data).
+Given a topic, you must draft exactly N distinct, original problem statements at a specific difficulty level, in the style of a well-formed competitive programming problem: a clear title and a description with a story/context followed by Input format, Output format and Constraints sections.
+%s
 Difficulty rubric for "%s": %s
 Each problem must be genuinely distinct from the others (different core idea/technique), appropriate for the given difficulty, and self-contained.
 Write the base title/description in Russian. Also provide translations into Russian (ru), Kyrgyz (ky) and English (en) of each problem (the "ru" translation may repeat the base text).
@@ -211,7 +218,7 @@ Respond with STRICT JSON only, matching exactly this shape:
     }
   ]
 }
-The "problems" array must contain exactly N items. Do not include any text outside the JSON object.`, difficulty, rubric[difficulty], difficulty)
+The "problems" array must contain exactly N items. Do not include any text outside the JSON object.`, descriptionFormatGuidance, difficulty, rubric[difficulty], difficulty)
 
 	user := fmt.Sprintf("Topic: %s\nAdditional context: %s\nN (number of problems to generate): %d", topicTitle, topicContext, count)
 
@@ -233,15 +240,17 @@ The "problems" array must contain exactly N items. Do not include any text outsi
 // ProblemDraft is a single AI-drafted problem statement for the "create
 // problem" page, before it has been saved anywhere.
 type ProblemDraft struct {
-	Title       string  `json:"title"`
-	Description string  `json:"description"`
-	Difficulty  string  `json:"difficulty"`
-	TimeLimit   float64 `json:"time_limit"`
-	MemoryLimit int     `json:"memory_limit"`
+	Title        string                   `json:"title"`
+	Description  string                   `json:"description"`
+	Difficulty   string                   `json:"difficulty"`
+	TimeLimit    float64                  `json:"time_limit"`
+	MemoryLimit  int                      `json:"memory_limit"`
+	Translations map[string]LocalizedText `json:"translations"` // keys: ru, ky, en
 }
 
 // DraftProblem drafts a single problem statement from a free-form idea
-// typed by the author, at the requested difficulty.
+// typed by the author, at the requested difficulty, together with ru/ky/en
+// translations so the create-problem flow can save them immediately.
 func (c *Client) DraftProblem(prompt, difficulty string) (*ProblemDraft, error) {
 	rubric := map[string]string{
 		"easy":   "easy: relies on basic loops, conditionals, arrays/strings and simple math — solvable by a beginner.",
@@ -250,13 +259,25 @@ func (c *Client) DraftProblem(prompt, difficulty string) (*ProblemDraft, error) 
 	}
 
 	system := fmt.Sprintf(`You are a professional competitive-programming problem setter working for an online judge platform.
-Given a short idea or theme from the author, draft one original, self-contained problem statement in the style of a well-formed competitive programming problem: a clear title, a description with a short story/context, "Input format", "Output format", "Constraints" and at least one worked "Example" (input/output shown as plain text within the description, not as executable test data).
+Given a short idea or theme from the author, draft one original, self-contained problem statement in the style of a well-formed competitive programming problem: a clear title and a description with a short story/context followed by Input format, Output format and Constraints sections.
+%s
 Difficulty rubric for "%s": %s
-Write the title/description in Russian.
+Write the base title/description in Russian. Also provide translations into Russian (ru), Kyrgyz (ky) and English (en) (the "ru" translation may repeat the base text).
 Suggest a reasonable time_limit (seconds, float) and memory_limit (MB, int) for the problem given its difficulty.
 Respond with STRICT JSON only, matching exactly this shape:
-{"title": "...", "description": "...", "difficulty": "%s", "time_limit": 1.0, "memory_limit": 256}
-Do not include any text outside the JSON object.`, difficulty, rubric[difficulty], difficulty)
+{
+  "title": "...",
+  "description": "...",
+  "difficulty": "%s",
+  "time_limit": 1.0,
+  "memory_limit": 256,
+  "translations": {
+    "ru": {"title": "...", "description": "..."},
+    "ky": {"title": "...", "description": "..."},
+    "en": {"title": "...", "description": "..."}
+  }
+}
+Do not include any text outside the JSON object.`, descriptionFormatGuidance, difficulty, rubric[difficulty], difficulty)
 
 	user := fmt.Sprintf("Idea/theme: %s", prompt)
 

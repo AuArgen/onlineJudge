@@ -337,6 +337,9 @@ const dict: Record<string, Record<LangCode, string>> = {
   'createProblem.aiAssistantBtn': { ru: 'Сгенерировать', ky: 'Жаратуу', en: 'Generate' },
   'createProblem.aiGenerating': { ru: 'Генерация...', ky: 'Жаратылып жатат...', en: 'Generating...' },
   'createProblem.aiError': { ru: 'Ошибка ИИ. Проверьте ключ DeepSeek на сервере.', ky: 'ЖИ катасы. Сервердеги DeepSeek ачкычын текшериңиз.', en: 'AI error. Check the DeepSeek key on the server.' },
+  'createProblem.translationsTitle': { ru: 'Котормолор / Переводы', ky: 'Котормолор', en: 'Translations' },
+  'createProblem.translationsNote': { ru: 'Заполняются автоматически ИИ-ассистентом или вручную. Сохраняются вместе с задачей.', ky: 'ЖИ-жардамчы автоматтык түрдө же кол менен толтурулат. Маселе менен бирге сакталат.', en: 'Filled in automatically by the AI assistant or manually. Saved together with the problem.' },
+  'createProblem.aiTranslationsIncluded': { ru: 'ИИ также подготовил переводы (кырг./англ.) — проверьте вкладки ниже.', ky: 'ЖИ котормолорду да даярдады (кырг./англ.) — ылдыйдагы кыналарды текшериңиз.', en: 'AI also drafted translations (ky/en) — check the tabs below.' },
 
   // Difficulty levels (shared)
   'difficulty.easy': { ru: 'Лёгкий', ky: 'Жеңил', en: 'Easy' },

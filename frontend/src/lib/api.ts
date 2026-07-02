@@ -63,6 +63,19 @@ export async function createProblem(data: any) {
   return res.json();
 }
 
+export async function upsertProblemTranslation(id: number | string, langCode: string, data: { title: string; description: string }) {
+  const res = await fetch(`${getBaseUrl()}/problems/${id}/translations/${langCode}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to save translation');
+  }
+  return res.json();
+}
+
 // ---- AI (admin only) ----
 
 export async function aiTranslateProblem(id: number | string) {
