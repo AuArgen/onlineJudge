@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { API_URL } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -148,7 +150,22 @@ export default function ReviewProblem() {
 
       <div className="bg-white shadow rounded-lg p-6 mb-8">
         <h3 className="text-lg font-bold mb-2">{t('adminReview.description')}</h3>
-        <p className="text-gray-700 whitespace-pre-wrap">{problem.description}</p>
+        <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed
+          [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3
+          [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mb-2 [&_h2]:mt-4
+          [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-2
+          [&_p]:mb-3
+          [&_strong]:font-bold
+          [&_code]:bg-gray-100 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono [&_code]:text-gray-800
+          [&_pre]:bg-gray-100 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre]:mb-3
+          [&_pre_code]:bg-transparent [&_pre_code]:p-0
+          [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3
+          [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3
+          [&_li]:mb-1
+          [&_blockquote]:border-l-4 [&_blockquote]:border-blue-300 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-gray-600
+        ">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{problem.description}</ReactMarkdown>
+        </div>
         <div className="flex gap-3 mt-4 text-xs font-medium text-gray-600">
           <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md border border-blue-100">Time: {problem.time_limit}s</span>
           <span className="bg-green-50 text-green-700 px-2.5 py-1 rounded-md border border-green-100">Memory: {problem.memory_limit}MB</span>
