@@ -15,7 +15,7 @@ type ValidationIssue struct {
 // published. "error" issues indicate the problem is broken (e.g. no test
 // cases); "warning" issues are advisory and don't block publishing.
 func validateProblem(problem models.Problem, testCases []models.TestCase) []ValidationIssue {
-	var issues []ValidationIssue
+	issues := []ValidationIssue{}
 
 	if strings.TrimSpace(problem.Title) == "" {
 		issues = append(issues, ValidationIssue{"error", "Отсутствует название задачи"})

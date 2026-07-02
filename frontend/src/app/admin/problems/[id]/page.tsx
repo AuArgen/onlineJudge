@@ -122,7 +122,7 @@ export default function ReviewProblem() {
         ) : validation ? (
           <div className="space-y-2">
             <p className="text-xs text-gray-500">{t('adminReview.testCaseCount').replace('{n}', String(validation.test_case_count))}</p>
-            {validation.issues.length === 0 ? (
+            {(validation.issues || []).length === 0 ? (
               <p className="text-sm text-green-700 font-medium flex items-center gap-1.5">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                 {t('adminReview.validationOk')}
