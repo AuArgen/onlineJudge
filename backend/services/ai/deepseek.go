@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -30,11 +31,17 @@ func NewClient() *Client {
 	if model == "" {
 		model = "deepseek-chat"
 	}
+	timeout := 180 * time.Second
+	if raw := os.Getenv("DEEPSEEK_TIMEOUT_SECONDS"); raw != "" {
+		if secs, err := strconv.Atoi(raw); err == nil && secs > 0 {
+			timeout = time.Duration(secs) * time.Second
+		}
+	}
 	return &Client{
 		apiKey:  os.Getenv("DEEPSEEK_API_KEY"),
 		baseURL: strings.TrimRight(baseURL, "/"),
 		model:   model,
-		http:    &http.Client{Timeout: 60 * time.Second},
+		http:    &http.Client{Timeout: timeout},
 	}
 }
 
