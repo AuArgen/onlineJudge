@@ -10,6 +10,7 @@ type Problem struct {
 	MemoryLimit int     `json:"memory_limit"`
 	AuthorID    uint    `json:"author_id"`
 	Visibility  string  `gorm:"default:private" json:"visibility"` // private, public
+	Difficulty  string  `gorm:"default:medium" json:"difficulty"`  // easy, medium, hard
 
 	// Status: draft, pending_review, published, rejected
 	Status            string `gorm:"default:draft" json:"status"`

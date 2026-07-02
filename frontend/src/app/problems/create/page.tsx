@@ -14,6 +14,7 @@ export default function CreateProblem() {
     description: '',
     time_limit: 1.0,
     memory_limit: 256,
+    difficulty: 'medium',
     author_source_code: '// Write correct solution here',
     author_language: 'python'
   });
@@ -76,6 +77,18 @@ export default function CreateProblem() {
                   onChange={(e) => setFormData({ ...formData, memory_limit: parseInt(e.target.value) })}
                 />
               </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('createProblem.difficulty')}</label>
+              <select
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2 bg-white"
+                value={formData.difficulty}
+                onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
+              >
+                <option value="easy">{t('difficulty.easy')}</option>
+                <option value="medium">{t('difficulty.medium')}</option>
+                <option value="hard">{t('difficulty.hard')}</option>
+              </select>
             </div>
           </div>
 

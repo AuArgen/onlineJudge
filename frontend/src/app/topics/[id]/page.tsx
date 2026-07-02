@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import {
   getTopic, generateTopicShareToken, shareTopicByEmail, revokeTopicAccess,
   addTopicContent, deleteTopicContent, addTopicProblem, removeTopicProblem,
-  createTopic, getTopicAnalytics, getProblems,
+  createTopic, getTopicAnalytics, getProblems, aiGenerateTopicProblems,
 } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -91,6 +91,12 @@ export default function TopicDetailPage() {
   const [problemSearch, setProblemSearch] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+
+  const [showAiGenerate, setShowAiGenerate] = useState(false);
+  const [aiCount, setAiCount] = useState(3);
+  const [aiDifficulty, setAiDifficulty] = useState('medium');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   const [shareToken, setShareToken] = useState('');
   const [shareEmail, setShareEmail] = useState('');
@@ -180,6 +186,21 @@ export default function TopicDetailPage() {
       load();
     } catch (err: any) {
       alert(err.message || t('topicForm.error'));
+    }
+  };
+
+  const handleAiGenerate = async () => {
+    setAiLoading(true);
+    setAiError('');
+    try {
+      await aiGenerateTopicProblems(id, aiCount, aiDifficulty);
+      setShowAiGenerate(false);
+      load();
+      alert(t('topicDetail.aiGenerateSuccess'));
+    } catch (err: any) {
+      setAiError(err.message || t('topicDetail.aiGenerateError'));
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -467,7 +488,7 @@ export default function TopicDetailPage() {
           )}
 
           {canEdit && (
-            <div className="relative">
+            <div className="relative flex flex-wrap gap-4">
               <button
                 onClick={() => setShowAddProblem(!showAddProblem)}
                 className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
@@ -478,7 +499,7 @@ export default function TopicDetailPage() {
                 {t('topicDetail.addProblem')}
               </button>
               {showAddProblem && (
-                <div className="mt-2 bg-white border border-gray-200 rounded-xl shadow-lg p-4">
+                <div className="mt-2 bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-full">
                   <input
                     type="text"
                     value={problemSearch}
@@ -503,6 +524,53 @@ export default function TopicDetailPage() {
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {isAdmin && (
+                <button
+                  onClick={() => setShowAiGenerate(!showAiGenerate)}
+                  className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 font-medium"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                  {t('topicDetail.aiGenerate')}
+                </button>
+              )}
+              {isAdmin && showAiGenerate && (
+                <div className="mt-2 bg-white border border-purple-200 rounded-xl shadow-lg p-4 w-full space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">{t('topicDetail.aiGenerateCount')}</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={5}
+                      value={aiCount}
+                      onChange={(e) => setAiCount(Math.min(5, Math.max(1, parseInt(e.target.value) || 1)))}
+                      className="w-24 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">{t('topicDetail.aiGenerateDifficulty')}</label>
+                    <select
+                      value={aiDifficulty}
+                      onChange={(e) => setAiDifficulty(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="easy">{t('difficulty.easy')}</option>
+                      <option value="medium">{t('difficulty.medium')}</option>
+                      <option value="hard">{t('difficulty.hard')}</option>
+                    </select>
+                  </div>
+                  {aiError && <p className="text-xs text-red-600">{aiError}</p>}
+                  <button
+                    onClick={handleAiGenerate}
+                    disabled={aiLoading}
+                    className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    {aiLoading ? t('topicDetail.aiGenerating') : t('topicDetail.aiGenerateBtn')}
+                  </button>
                 </div>
               )}
             </div>

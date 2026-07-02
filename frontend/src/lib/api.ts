@@ -63,6 +63,33 @@ export async function createProblem(data: any) {
   return res.json();
 }
 
+// ---- AI (admin only) ----
+
+export async function aiTranslateProblem(id: number | string) {
+  const res = await fetch(`${getBaseUrl()}/admin/ai/problems/${id}/translate`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'AI translate failed');
+  }
+  return res.json();
+}
+
+export async function aiGenerateTopicProblems(topicId: number | string, count: number, difficulty: string) {
+  const res = await fetch(`${getBaseUrl()}/admin/ai/topics/${topicId}/generate`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ count, difficulty }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'AI generation failed');
+  }
+  return res.json();
+}
+
 // ---- Topics ----
 
 export async function getTopics(filter?: string) {

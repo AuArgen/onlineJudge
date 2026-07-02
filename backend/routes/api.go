@@ -92,4 +92,8 @@ func SetupRoutes(app *fiber.App) {
 	admin.Get("/users", controllers.GetAllUsers)
 	admin.Get("/users/:id", controllers.GetUserProfile)
 	admin.Get("/activity", controllers.GetUserActivity)
+
+	// AI (DeepSeek)
+	admin.Post("/ai/problems/:id/translate", controllers.TranslateProblem)
+	admin.Post("/ai/topics/:id/generate", controllers.GenerateTopicProblems)
 }

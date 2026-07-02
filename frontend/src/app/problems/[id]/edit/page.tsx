@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Editor from '@monaco-editor/react';
-import { API_URL } from '@/lib/api';
+import { API_URL, aiTranslateProblem } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/components/AuthProvider';
 
 const TRANSLATION_LANGS = [
   { code: 'ky', label: 'Кыргызча', flag: '🇰🇬' },
@@ -15,12 +16,15 @@ export default function EditProblem() {
   const router = useRouter();
   const { id } = useParams();
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     time_limit: 1.0,
     memory_limit: 256,
+    difficulty: 'medium',
     visibility: 'private',
     status: 'draft',
     moderation_comment: '',
@@ -38,6 +42,9 @@ export default function EditProblem() {
   const [translations, setTranslations] = useState<Record<string, { title: string; description: string }>>({});
   const [activeLang, setActiveLang] = useState('ky');
   const [savingTranslation, setSavingTranslation] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [aiCorrected, setAiCorrected] = useState<{ title: string; description: string } | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -59,6 +66,7 @@ export default function EditProblem() {
           description: data.description,
           time_limit: data.time_limit,
           memory_limit: data.memory_limit,
+          difficulty: data.difficulty || 'medium',
           visibility: data.visibility,
           status: data.status,
           moderation_comment: data.moderation_comment || '',
@@ -264,6 +272,30 @@ export default function EditProblem() {
     }
   };
 
+  const handleAiTranslate = async () => {
+    setAiLoading(true);
+    setAiError('');
+    try {
+      const result = await aiTranslateProblem(id as string);
+      setAiCorrected(result.corrected || null);
+      setTranslations(prev => ({
+        ...prev,
+        ...(result.translations?.ky ? { ky: result.translations.ky } : {}),
+        ...(result.translations?.en ? { en: result.translations.en } : {}),
+      }));
+      alert(t('editProblem.aiTranslateSuccess'));
+    } catch (err: any) {
+      setAiError(err.message || t('editProblem.aiTranslateError'));
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleApplyAiCorrected = () => {
+    if (!aiCorrected) return;
+    setFormData({ ...formData, title: aiCorrected.title, description: aiCorrected.description });
+  };
+
   const handleDeleteTranslation = async (langCode: string) => {
     if (!confirm(t('editProblem.confirmDeleteTranslation'))) return;
     const token = localStorage.getItem('token');
@@ -356,6 +388,18 @@ export default function EditProblem() {
                 <input type="number" required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2" value={formData.memory_limit} onChange={(e) => setFormData({ ...formData, memory_limit: parseInt(e.target.value) })} />
               </div>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('editProblem.difficulty')}</label>
+              <select
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2 bg-white"
+                value={formData.difficulty}
+                onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
+              >
+                <option value="easy">{t('difficulty.easy')}</option>
+                <option value="medium">{t('difficulty.medium')}</option>
+                <option value="hard">{t('difficulty.hard')}</option>
+              </select>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">{t('editProblem.visibility')}</label>
@@ -435,6 +479,31 @@ export default function EditProblem() {
           <div className="bg-white shadow rounded-lg p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">{t('editProblem.translationsTitle')}</h3>
             <p className="text-xs text-gray-500 mb-4">{t('editProblem.translationsNote')}</p>
+            {isAdmin && (
+              <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                <button
+                  type="button"
+                  onClick={handleAiTranslate}
+                  disabled={aiLoading}
+                  className="bg-purple-600 text-white px-4 py-2 rounded text-sm hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {aiLoading ? t('editProblem.aiTranslating') : t('editProblem.aiTranslate')}
+                </button>
+                {aiError && <p className="text-xs text-red-600 mt-2">{aiError}</p>}
+                {aiCorrected && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <span className="text-xs text-gray-600">{aiCorrected.title}</span>
+                    <button
+                      type="button"
+                      onClick={handleApplyAiCorrected}
+                      className="text-xs text-purple-700 border border-purple-300 rounded px-2 py-1 hover:bg-purple-100"
+                    >
+                      {t('editProblem.aiApplyCorrected')}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="flex gap-2 mb-4">
               {TRANSLATION_LANGS.map(l => (
                 <button
