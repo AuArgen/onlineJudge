@@ -442,8 +442,9 @@ func AddTestCase(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Author solution Runtime Error: " + results[0].Stderr})
 	}
 
-	// Set the generated output
-	testCase.ExpectedOutput = strings.TrimSpace(results[0].Stdout)
+	// Set the generated output (keep leading spaces — they can be part of
+	// the answer, e.g. centered ASCII art)
+	testCase.ExpectedOutput = normalizeOutput(results[0].Stdout)
 	testCase.ProblemID = problem.ID
 
 	database.DB.Create(&testCase)
@@ -524,7 +525,7 @@ func UpdateTestCase(c *fiber.Ctx) error {
 	}
 
 	testCase.Input = body.Input
-	testCase.ExpectedOutput = strings.TrimSpace(results[0].Stdout)
+	testCase.ExpectedOutput = normalizeOutput(results[0].Stdout)
 	testCase.IsSample = body.IsSample
 
 	database.DB.Save(&testCase)

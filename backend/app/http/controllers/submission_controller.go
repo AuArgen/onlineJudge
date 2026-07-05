@@ -11,6 +11,18 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+// normalizeOutput trims trailing whitespace from each line and drops
+// trailing blank lines, but keeps leading indentation — outputs like
+// centered pyramids depend on leading spaces, so a plain TrimSpace
+// would corrupt them.
+func normalizeOutput(s string) string {
+	lines := strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n")
+	for i := range lines {
+		lines[i] = strings.TrimRight(lines[i], " \t\r")
+	}
+	return strings.TrimRight(strings.Join(lines, "\n"), "\n")
+}
+
 type SubmitRequest struct {
 	ProblemID  uint   `json:"problem_id"`
 	ContestID  *uint  `json:"contest_id,omitempty"`
@@ -126,8 +138,8 @@ func SubmitSolution(c *fiber.Ctx) error {
 		result := results[i]
 		status := "Accepted"
 		// Judging always compares the full, untruncated output.
-		userOutput := strings.TrimSpace(result.Stdout)
-		expectedOutput := strings.TrimSpace(tc.ExpectedOutput)
+		userOutput := normalizeOutput(result.Stdout)
+		expectedOutput := normalizeOutput(tc.ExpectedOutput)
 
 		if result.TimedOut {
 			status = "Time Limit Exceeded"
