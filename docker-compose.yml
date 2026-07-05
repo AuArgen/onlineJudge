@@ -29,10 +29,12 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
     ports:
       - "${FRONTEND_PORT}:3000"
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
     depends_on:
       - backend
     restart: always

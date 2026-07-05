@@ -38,11 +38,16 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://my-backend.com/api
+        NEXT_PUBLIC_SITE_URL: https://my-frontend.com
     ports:
       - "3000:3000"
     environment:
       # Frontend needs to know where the Backend API is
       - NEXT_PUBLIC_API_URL=https://my-backend.com/api
+      # Used to build canonical URLs, sitemap.xml and robots.txt entries
+      - NEXT_PUBLIC_SITE_URL=https://my-frontend.com
     depends_on:
       - backend
     restart: always
