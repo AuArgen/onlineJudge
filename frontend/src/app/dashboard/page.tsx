@@ -3,38 +3,49 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { API_URL } from '@/lib/api';
+import { API_URL, deleteTopic, getTopics } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useToast } from '@/components/ToastProvider';
 
 export default function Dashboard() {
   const router = useRouter();
   const { t } = useLanguage();
+  const { showToast } = useToast();
   const [problems, setProblems] = useState<any[]>([]);
+  const [topics, setTopics] = useState<any[]>([]);
   const [contests, setContests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'problems' | 'contests'>('problems');
+  const [activeTab, setActiveTab] = useState<'problems' | 'topics' | 'contests'>('problems');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     if (!token || !userData) { router.push('/auth/login'); return; }
-    setUser(JSON.parse(userData));
+    const currentUser = JSON.parse(userData);
+    setUser(currentUser);
 
-    fetch(`${API_URL}/problems?filter=my`, { headers: { 'Authorization': `Bearer ${token}` } })
-      .then((res) => res.json())
-      .then((data) => setProblems(Array.isArray(data) ? data : (data.data ?? [])))
-      .catch(console.error);
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const [problemData, topicData, contestData] = await Promise.all([
+          fetch(`${API_URL}/problems?filter=my`, { headers: { 'Authorization': `Bearer ${token}` } }).then((res) => res.json()),
+          getTopics('my'),
+          fetch(`${API_URL}/contests`, { headers: { 'Authorization': `Bearer ${token}` } }).then((res) => res.json()),
+        ]);
 
-    fetch(`${API_URL}/contests`, { headers: { 'Authorization': `Bearer ${token}` } })
-      .then((res) => res.json())
-      .then((data) => {
-        const list: any[] = Array.isArray(data) ? data : (data.data ?? []);
-        const myContests = list.filter((c: any) => c.author_id === JSON.parse(userData).id);
-        setContests(myContests);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+        setProblems(Array.isArray(problemData) ? problemData : (problemData.data ?? []));
+        setTopics(Array.isArray(topicData) ? topicData : []);
+        const list: any[] = Array.isArray(contestData) ? contestData : (contestData.data ?? []);
+        setContests(list.filter((c: any) => c.author_id === currentUser.id));
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, [router]);
 
   const handleDeleteProblem = async (problemId: number) => {
@@ -56,13 +67,32 @@ export default function Dashboard() {
     }
   };
 
+  const handleDeleteTopic = async (topicId: number) => {
+    if (!confirm(t('dashboard.confirmDeleteTopic'))) return;
+    try {
+      await deleteTopic(topicId);
+      setTopics((items) => items.filter((topic: any) => topic.id !== topicId));
+      showToast(t('dashboard.topicDeleted'), 'success');
+    } catch (error) {
+      console.error(error);
+      showToast(t('dashboard.deleteError'), 'error');
+    }
+  };
+
+  const visibilityLabel = (visibility: string) => (
+    visibility === 'public' ? t('dashboard.public') : t('dashboard.private')
+  );
+
   return (
     <div className="max-w-7xl mx-auto py-10 px-4">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
         <h1 className="text-3xl font-bold text-gray-900">{t('dashboard.title')}</h1>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-3">
           <Link href="/problems/create" className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition text-sm">
             {t('dashboard.createProblem')}
+          </Link>
+          <Link href="/topics/create" className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition text-sm">
+            {t('dashboard.createTopic')}
           </Link>
           <Link href="/contests/create" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition text-sm">
             {t('dashboard.createContest')}
@@ -76,6 +106,12 @@ export default function Dashboard() {
           onClick={() => setActiveTab('problems')}
         >
           {t('dashboard.myProblems')}
+        </button>
+        <button
+          className={`py-2 px-4 font-medium text-sm border-b-2 transition-colors ${activeTab === 'topics' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          onClick={() => setActiveTab('topics')}
+        >
+          {t('dashboard.myTopics')}
         </button>
         <button
           className={`py-2 px-4 font-medium text-sm border-b-2 transition-colors ${activeTab === 'contests' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
@@ -123,6 +159,56 @@ export default function Dashboard() {
                               {t('dashboard.edit')}
                             </button>
                             <button onClick={() => handleDeleteProblem(problem.id)} className="text-red-600 hover:text-red-900">
+                              {t('dashboard.delete')}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'topics' && (
+            <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.name')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.status')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.contents')}</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('dashboard.actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {topics.length === 0 ? (
+                      <tr><td colSpan={4} className="text-center py-10 text-gray-500">{t('dashboard.noTopics')}</td></tr>
+                    ) : (
+                      topics.map((topic: any) => (
+                        <tr key={topic.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Link href={`/topics/${topic.id}`} className="text-sm font-medium text-blue-600 hover:underline">{topic.title}</Link>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${topic.visibility === 'public' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}>
+                              {visibilityLabel(topic.visibility)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {(topic.problem_count || 0)} {t('dashboard.problemsCount')}
+                            {topic.subtopic_count > 0 ? ` · ${topic.subtopic_count} ${t('dashboard.subtopicsCount')}` : ''}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
+                            <button onClick={() => router.push(`/topics/${topic.id}`)} className="text-blue-600 hover:text-blue-900">
+                              {t('dashboard.view')}
+                            </button>
+                            <button onClick={() => router.push(`/topics/${topic.id}/edit`)} className="text-indigo-600 hover:text-indigo-900">
+                              {t('dashboard.edit')}
+                            </button>
+                            <button onClick={() => handleDeleteTopic(topic.id)} className="text-red-600 hover:text-red-900">
                               {t('dashboard.delete')}
                             </button>
                           </td>

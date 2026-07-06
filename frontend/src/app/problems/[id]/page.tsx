@@ -405,7 +405,7 @@ function ProblemDetailContent() {
                 onClick={() => setLang('ru')}
                 className={`text-xs px-2.5 py-1 rounded-full border transition font-medium ${lang === 'ru' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'}`}
               >
-                🇷🇺 Русский
+                {LANGUAGES.find((l) => l.code === 'ru')?.flag} {LANGUAGES.find((l) => l.code === 'ru')?.label || 'Русский'}
               </button>
               {problem.translations.map((tr: any) => {
                 const l = LANGUAGES.find(l => l.code === tr.language_code);
@@ -423,8 +423,8 @@ function ProblemDetailContent() {
           )}
 
           <div className="flex gap-3 mb-6 text-xs font-medium text-gray-600">
-            <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md border border-blue-100">Time: {problem.time_limit}s</span>
-            <span className="bg-green-50 text-green-700 px-2.5 py-1 rounded-md border border-green-100">Memory: {problem.memory_limit}MB</span>
+            <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md border border-blue-100">{t('problem.time')}: {problem.time_limit}s</span>
+            <span className="bg-green-50 text-green-700 px-2.5 py-1 rounded-md border border-green-100">{t('problem.memory')}: {problem.memory_limit}MB</span>
           </div>
 
           <div className="prose prose-sm max-w-none mb-8 text-gray-800 leading-relaxed
@@ -457,7 +457,7 @@ function ProblemDetailContent() {
                           <button
                             onClick={() => handleCopy(tc.input, `${i}-in`)}
                             className="text-[10px] text-gray-400 hover:text-blue-600 flex items-center gap-0.5 transition"
-                            title="Көчүрүү"
+                            title={t('problem.copy')}
                           >
                             {copiedKey === `${i}-in` ? (
                               <svg className="h-3 w-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -468,7 +468,7 @@ function ProblemDetailContent() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                               </svg>
                             )}
-                            {copiedKey === `${i}-in` ? 'Көчүрүлдү' : 'Көчүрүү'}
+                            {copiedKey === `${i}-in` ? t('problem.copied') : t('problem.copy')}
                           </button>
                         </div>
                         <pre className="font-mono text-gray-800 whitespace-pre-wrap">{tc.input}</pre>
@@ -479,7 +479,7 @@ function ProblemDetailContent() {
                           <button
                             onClick={() => handleCopy(tc.expected_output, `${i}-out`)}
                             className="text-[10px] text-gray-400 hover:text-blue-600 flex items-center gap-0.5 transition"
-                            title="Көчүрүү"
+                            title={t('problem.copy')}
                           >
                             {copiedKey === `${i}-out` ? (
                               <svg className="h-3 w-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -490,7 +490,7 @@ function ProblemDetailContent() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                               </svg>
                             )}
-                            {copiedKey === `${i}-out` ? 'Көчүрүлдү' : 'Көчүрүү'}
+                            {copiedKey === `${i}-out` ? t('problem.copied') : t('problem.copy')}
                           </button>
                         </div>
                         <pre className="font-mono text-gray-800 whitespace-pre-wrap">{tc.expected_output}</pre>

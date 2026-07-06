@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { API_URL } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useToast } from '@/components/ToastProvider';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,7 @@ function ProblemsContent() {
   const { lang, t } = useLanguage();
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const { showToast } = useToast();
   const limit = 20;
 
   useEffect(() => {
@@ -75,6 +77,39 @@ function ProblemsContent() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [debouncedSearch, filter, page, lang]);
+
+  const isProblemOwner = (problem: any) => user && (problem.author_id === user.id || user.role === 'admin');
+
+  const visibilityLabel = (visibility: string) => {
+    if (visibility === 'public') return t('problems.public');
+    if (visibility === 'private') return t('problems.private');
+    return visibility;
+  };
+
+  const statusLabel = (status: string) => {
+    if (status === 'draft') return t('problems.draft');
+    if (status === 'pending_review') return t('problems.pendingReview');
+    if (status === 'rejected') return t('problems.rejected');
+    return status;
+  };
+
+  const handleDeleteProblem = async (problemId: number) => {
+    if (!confirm(t('problems.confirmDelete'))) return;
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_URL}/problems/${problemId}`, {
+        method: 'DELETE',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('delete failed');
+      setProblems((items) => items.filter((problem) => problem.id !== problemId));
+      setTotal((current) => Math.max(0, current - 1));
+      showToast(t('problems.deleted'), 'success');
+    } catch (error) {
+      console.error(error);
+      showToast(t('problems.deleteError'), 'error');
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4">
@@ -146,35 +181,64 @@ function ProblemsContent() {
         <>
           <div className="grid grid-cols-1 gap-4">
             {problems.map((problem: any) => (
-              <Link key={problem.id} href={`/problems/${problem.id}`} className="block group">
-                <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div>
+              <div key={problem.id} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 group">
+                  <div className="min-w-0">
                     <div className="flex items-center gap-3 mb-1">
-                      <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition">{problem.title}</h3>
+                      <Link href={`/problems/${problem.id}`} className="min-w-0">
+                        <h3 className="text-lg font-semibold text-gray-900 hover:text-blue-600 transition truncate">{problem.title}</h3>
+                      </Link>
                       {problem.visibility !== 'public' && (
                         <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-100 text-gray-700 border-gray-200">
-                          {problem.visibility === 'private' ? t('problems.private') : problem.visibility}
+                          {visibilityLabel(problem.visibility)}
+                        </span>
+                      )}
+                      {isProblemOwner(problem) && problem.status && (
+                        <span className="text-xs px-2 py-0.5 rounded-full border bg-blue-50 text-blue-700 border-blue-100">
+                          {statusLabel(problem.status)}
                         </span>
                       )}
                     </div>
                     <p className="text-sm text-gray-500 line-clamp-1 max-w-2xl">{problem.description}</p>
                   </div>
-                  <div className="flex items-center gap-6 text-sm text-gray-500 w-full sm:w-auto justify-between sm:justify-end">
-                    <div className="flex items-center gap-1">
-                      <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                      <span>{problem.solved_count || 0}</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-sm text-gray-500 w-full sm:w-auto">
+                    <div className="flex items-center gap-6 justify-between sm:justify-end">
+                      <div className="flex items-center gap-1">
+                        <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                        <span>{problem.solved_count || 0}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        {problem.time_limit}s
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        {problem.memory_limit}MB
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                      {problem.time_limit}s
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                      {problem.memory_limit}MB
-                    </div>
-                  </div>
+                    {isProblemOwner(problem) && (
+                      <div className="flex items-center gap-2 sm:justify-end">
+                        <Link
+                          href={`/problems/${problem.id}/edit`}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          {t('problems.edit')}
+                        </Link>
+                        <button
+                          onClick={() => handleDeleteProblem(problem.id)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          {t('problems.delete')}
+                        </button>
+                      </div>
+                    )}
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
 

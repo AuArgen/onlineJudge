@@ -29,17 +29,17 @@ function CallbackContent() {
             login(data.token, data.user);
           } else {
             console.error('Login failed:', data);
-            alert('Login failed: ' + (data.error || 'Unknown error'));
+            alert(`${t('auth.loginFailed')}: ${data.error || t('auth.unknownError')}`);
             router.push('/auth/login');
           }
         })
         .catch((err) => {
           console.error('Error logging in:', err);
-          alert('Error logging in');
+          alert(t('auth.loginError'));
           router.push('/auth/login');
         });
     }
-  }, [code, router, login]);
+  }, [code, router, login, t]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">
@@ -49,8 +49,10 @@ function CallbackContent() {
 }
 
 export default function Callback() {
+  const { t } = useLanguage();
+
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="text-xl">Loading...</div></div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="text-xl">{t('auth.loading')}</div></div>}>
       <CallbackContent />
     </Suspense>
   );

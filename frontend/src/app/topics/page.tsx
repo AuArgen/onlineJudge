@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { getTopics, deleteTopic } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useToast } from '@/components/ToastProvider';
 
 export default function TopicsPage() {
   const { user, loading: authLoading } = useAuth();
   const { t } = useLanguage();
+  const { showToast } = useToast();
   const [topics, setTopics] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -27,9 +29,15 @@ export default function TopicsPage() {
   }, [filter, authLoading, user]);
 
   const handleDelete = async (id: number, title: string) => {
-    if (!confirm(`"${title}" ${t('topics.delete')}?`)) return;
-    await deleteTopic(id);
-    load(filter);
+    if (!confirm(t('topics.confirmDelete').replace('{title}', title))) return;
+    try {
+      await deleteTopic(id);
+      showToast(t('topics.deleted'), 'success');
+      load(filter);
+    } catch (error) {
+      console.error(error);
+      showToast(t('topics.deleteError'), 'error');
+    }
   };
 
   return (

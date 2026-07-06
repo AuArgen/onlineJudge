@@ -134,7 +134,7 @@ export default function ReviewProblem() {
                 {validation.issues.map((iss, i) => (
                   <li key={i} className={`text-sm flex items-start gap-2 ${iss.level === 'error' ? 'text-red-700' : 'text-amber-700'}`}>
                     <span className={`mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${iss.level === 'error' ? 'bg-red-100' : 'bg-amber-100'}`}>
-                      {iss.level === 'error' ? 'Error' : 'Warning'}
+                      {iss.level === 'error' ? t('adminReview.error') : t('adminReview.warning')}
                     </span>
                     <span>{iss.message}</span>
                   </li>
@@ -167,8 +167,8 @@ export default function ReviewProblem() {
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{problem.description}</ReactMarkdown>
         </div>
         <div className="flex gap-3 mt-4 text-xs font-medium text-gray-600">
-          <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md border border-blue-100">Time: {problem.time_limit}s</span>
-          <span className="bg-green-50 text-green-700 px-2.5 py-1 rounded-md border border-green-100">Memory: {problem.memory_limit}MB</span>
+          <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md border border-blue-100">{t('adminReview.time')}: {problem.time_limit}s</span>
+          <span className="bg-green-50 text-green-700 px-2.5 py-1 rounded-md border border-green-100">{t('adminReview.memory')}: {problem.memory_limit}MB</span>
         </div>
       </div>
 
@@ -194,11 +194,11 @@ export default function ReviewProblem() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">Input</div>
+                    <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">{t('adminReview.input')}</div>
                     <pre className="text-xs font-mono bg-white border rounded p-2 whitespace-pre-wrap break-all max-h-32 overflow-y-auto">{tc.input}</pre>
                   </div>
                   <div>
-                    <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">Output</div>
+                    <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">{t('adminReview.output')}</div>
                     <pre className="text-xs font-mono bg-white border rounded p-2 whitespace-pre-wrap break-all max-h-32 overflow-y-auto">{tc.expected_output}</pre>
                   </div>
                 </div>
