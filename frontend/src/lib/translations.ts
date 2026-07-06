@@ -520,6 +520,7 @@ const dict: Record<string, Record<LangCode, string>> = {
   'topicDetail.tabProblems': { ru: 'Задачи', ky: 'Задачалар', en: 'Problems' },
   'topicDetail.tabShare': { ru: 'Поделиться', ky: 'Бөлүшүү', en: 'Share' },
   'topicDetail.tabAnalytics': { ru: 'Аналитика', ky: 'Аналитика', en: 'Analytics' },
+  'topicDetail.tabTranslate': { ru: 'Переводы', ky: 'Котормолор', en: 'Translations' },
   'topicDetail.noContent': { ru: 'Нет содержания', ky: 'Мазмун жок', en: 'No content' },
   'topicDetail.addContent': { ru: 'Добавить содержание', ky: 'Мазмун кошуу', en: 'Add content' },
   'topicDetail.subtopics': { ru: 'Подтемы', ky: 'Подтемалар', en: 'Subtopics' },
@@ -561,6 +562,7 @@ const dict: Record<string, Record<LangCode, string>> = {
   'topicDetail.public2': { ru: 'публичная', ky: 'жалпы', en: 'public' },
   'topicDetail.contentType': { ru: 'Тип', ky: 'Түрү', en: 'Type' },
   'topicDetail.contentText': { ru: 'Текст', ky: 'Текст', en: 'Text' },
+  'topicDetail.contentCode': { ru: 'Код', ky: 'Код', en: 'Code' },
   'topicDetail.contentImage': { ru: 'Изображение', ky: 'Сүрөт', en: 'Image' },
   'topicDetail.contentVideo': { ru: 'Видео YouTube', ky: 'YouTube видео', en: 'YouTube video' },
   'topicDetail.contentLink': { ru: 'Ссылка', ky: 'Шилтеме', en: 'Link' },
@@ -583,6 +585,13 @@ const dict: Record<string, Record<LangCode, string>> = {
   'topicDetail.create': { ru: 'Создать', ky: 'Түзүү', en: 'Create' },
   'topicDetail.contentEmpty': { ru: 'Мазмун бош болбосун', ky: 'Мазмун бош болбосун', en: 'Content cannot be empty' },
   'topicDetail.deleteBtn': { ru: 'Удалить', ky: 'Өчүрүү', en: 'Delete' },
+  'topicDetail.translateTitleLabel': { ru: 'Название', ky: 'Аталышы', en: 'Title' },
+  'topicDetail.saveTranslation': { ru: 'Сохранить перевод', ky: 'Котормону сактоо', en: 'Save translation' },
+  'topicDetail.deleteTranslation': { ru: 'Удалить перевод', ky: 'Котормону өчүрүү', en: 'Delete translation' },
+  'topicDetail.confirmDeleteTranslation': { ru: 'Удалить этот перевод?', ky: 'Бул котормону өчүрөсүзбү?', en: 'Delete this translation?' },
+  'topicDetail.aiTranslateBtn': { ru: '✨ Перевести с ИИ', ky: '✨ ЖИ менен которуу', en: '✨ Translate with AI' },
+  'topicDetail.aiTranslating': { ru: 'ИИ переводит...', ky: 'ЖИ которууда...', en: 'AI is translating...' },
+  'topicDetail.aiTranslateError': { ru: 'Ошибка ИИ. Проверьте ключ DeepSeek на сервере.', ky: 'ЖИ катасы. Сервердеги DeepSeek ачкычын текшериңиз.', en: 'AI error. Check the DeepSeek key on the server.' },
 };
 
 export function getTranslation(lang: string, key: string): string {

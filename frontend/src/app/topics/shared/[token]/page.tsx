@@ -4,15 +4,25 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { getTopicByToken } from '@/lib/api';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage, LANGUAGES } from '@/contexts/LanguageContext';
+import { linkifyText } from '@/lib/linkify';
 
 function ContentBlock({ block }: { block: any }) {
   switch (block.type) {
     case 'text':
       return (
         <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-wrap">
-          {block.content}
+          {linkifyText(block.content)}
           {block.caption && <p className="text-xs text-gray-400 mt-1">{block.caption}</p>}
+        </div>
+      );
+    case 'code':
+      return (
+        <div>
+          <pre className="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto text-sm font-mono whitespace-pre">
+            <code>{block.content}</code>
+          </pre>
+          {block.caption && <p className="text-xs text-gray-400 mt-2 text-center">{block.caption}</p>}
         </div>
       );
     case 'image':
@@ -57,12 +67,14 @@ function ContentBlock({ block }: { block: any }) {
 
 export default function SharedTopicPage() {
   const { token } = useParams<{ token: string }>();
-  const { t } = useLanguage();
+  const { t, lang, setLang } = useLanguage();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Fetch the base topic once, with every translation preloaded — language
+    // switching below is done client-side against that data, no refetch.
     getTopicByToken(token)
       .then(setData)
       .catch(() => setError(t('topicShared.notFoundDesc')))
@@ -97,6 +109,16 @@ export default function SharedTopicPage() {
 
   const { topic, problems } = data;
 
+  const displayTitle = lang === 'ru'
+    ? topic.title
+    : (topic.translations?.find((tr: any) => tr.language_code === lang)?.title || topic.title);
+  const localizeBlock = (block: any) => {
+    if (lang === 'ru') return block;
+    const tr = block.translations?.find((bt: any) => bt.language_code === lang);
+    return tr ? { ...block, content: tr.content, caption: tr.caption } : block;
+  };
+  const hasTranslations = topic.translations && topic.translations.length > 0;
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top banner */}
@@ -108,12 +130,28 @@ export default function SharedTopicPage() {
             </svg>
             Online Judge
           </Link>
-          <span className="text-xs text-gray-400 flex items-center gap-1">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-            </svg>
-            {t('topicShared.sharedTopic')}
-          </span>
+          <div className="flex items-center gap-3">
+            {hasTranslations && (
+              <div className="flex gap-1">
+                {LANGUAGES.map(l => (
+                  <button
+                    key={l.code}
+                    onClick={() => setLang(l.code)}
+                    title={l.label}
+                    className={`text-xs px-1.5 py-0.5 rounded border transition ${lang === l.code ? 'bg-blue-50 border-blue-300' : 'border-transparent hover:border-gray-200'}`}
+                  >
+                    {l.flag}
+                  </button>
+                ))}
+              </div>
+            )}
+            <span className="text-xs text-gray-400 flex items-center gap-1">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              {t('topicShared.sharedTopic')}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -122,7 +160,7 @@ export default function SharedTopicPage() {
         <div className="bg-white border border-gray-200 rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-1">
             <span className="text-3xl">📁</span>
-            <h1 className="text-2xl font-bold text-gray-900">{topic.title}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{displayTitle}</h1>
           </div>
           <p className="text-sm text-gray-500 ml-11">
             {topic.author?.name} {t('topicShared.by')}
@@ -153,7 +191,7 @@ export default function SharedTopicPage() {
               .sort((a: any, b: any) => a.order_num - b.order_num)
               .map((block: any) => (
                 <div key={block.id} className="bg-white border border-gray-200 rounded-xl p-5">
-                  <ContentBlock block={block} />
+                  <ContentBlock block={localizeBlock(block)} />
                 </div>
               ))}
           </div>

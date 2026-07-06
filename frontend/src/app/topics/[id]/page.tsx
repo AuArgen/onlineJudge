@@ -7,10 +7,14 @@ import {
   getTopic, generateTopicShareToken, shareTopicByEmail, revokeTopicAccess,
   addTopicContent, deleteTopicContent, addTopicProblem, removeTopicProblem,
   createTopic, getTopicAnalytics, getProblems, aiGenerateTopicProblems,
-  aiGenerateTopicOverview,
+  aiGenerateTopicOverview, upsertTopicTranslation, deleteTopicTranslation,
+  upsertTopicContentTranslation, deleteTopicContentTranslation, aiTranslateTopic,
 } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage, LANGUAGES } from '@/contexts/LanguageContext';
+import { linkifyText } from '@/lib/linkify';
+
+const TRANSLATION_LANGS = LANGUAGES.filter(l => l.code !== 'ru');
 
 function YouTubeEmbed({ src, caption }: { src: string; caption?: string }) {
   return (
@@ -33,8 +37,17 @@ function ContentBlock({ block }: { block: any }) {
     case 'text':
       return (
         <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-wrap">
-          {block.content}
+          {linkifyText(block.content)}
           {block.caption && <p className="text-xs text-gray-400 mt-1">{block.caption}</p>}
+        </div>
+      );
+    case 'code':
+      return (
+        <div>
+          <pre className="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto text-sm font-mono whitespace-pre">
+            <code>{block.content}</code>
+          </pre>
+          {block.caption && <p className="text-xs text-gray-400 mt-2 text-center">{block.caption}</p>}
         </div>
       );
     case 'image':
@@ -68,13 +81,13 @@ function ContentBlock({ block }: { block: any }) {
 export default function TopicDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang, setLang } = useLanguage();
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'problems' | 'analytics' | 'share'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'problems' | 'analytics' | 'share' | 'translate'>('overview');
 
   const [showAddContent, setShowAddContent] = useState(false);
   const [contentType, setContentType] = useState('text');
@@ -112,13 +125,25 @@ export default function TopicDetailPage() {
 
   const CONTENT_TYPES = [
     { key: 'text', label: t('topicDetail.contentText'), icon: '📝' },
+    { key: 'code', label: t('topicDetail.contentCode'), icon: '💻' },
     { key: 'image', label: t('topicDetail.contentImage'), icon: '🖼️' },
     { key: 'video', label: t('topicDetail.contentVideo'), icon: '▶️' },
     { key: 'link', label: t('topicDetail.contentLink'), icon: '🔗' },
   ];
 
+  const [activeTransLang, setActiveTransLang] = useState('ky');
+  const [titleTranslation, setTitleTranslation] = useState('');
+  const [contentTranslations, setContentTranslations] = useState<Record<number, { content: string; caption: string }>>({});
+  const [translationSaving, setTranslationSaving] = useState<number | 'title' | null>(null);
+  const [aiTranslateLoading, setAiTranslateLoading] = useState(false);
+  const [aiTranslateError, setAiTranslateError] = useState('');
+
   const load = useCallback(() => {
     setLoading(true);
+    // Always fetch the base (untranslated) topic here — this page doubles as
+    // the owner's editor, and the edit/translate flows need the raw base
+    // fields. Localized display for readers is computed client-side below
+    // from the already-preloaded translations, not via a refetch.
     getTopic(id)
       .then((d) => {
         setData(d);
@@ -129,6 +154,18 @@ export default function TopicDetailPage() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!data?.topic) return;
+    const titleTr = data.topic.translations?.find((tr: any) => tr.language_code === activeTransLang);
+    setTitleTranslation(titleTr?.title || '');
+    const drafts: Record<number, { content: string; caption: string }> = {};
+    (data.topic.contents || []).forEach((blk: any) => {
+      const tr = blk.translations?.find((t: any) => t.language_code === activeTransLang);
+      drafts[blk.id] = { content: tr?.content ?? blk.content, caption: tr?.caption ?? blk.caption ?? '' };
+    });
+    setContentTranslations(drafts);
+  }, [data, activeTransLang]);
 
   const isOwner = user && data?.topic && data.topic.author_id === user.id;
   const isAdmin = user?.role === 'admin';
@@ -260,6 +297,58 @@ export default function TopicDetailPage() {
     load();
   };
 
+  const handleSaveTitleTranslation = async () => {
+    if (!titleTranslation.trim()) return;
+    setTranslationSaving('title');
+    try {
+      await upsertTopicTranslation(id, activeTransLang, titleTranslation.trim());
+      load();
+    } catch (err: any) {
+      alert(err.message || t('topicForm.error'));
+    } finally {
+      setTranslationSaving(null);
+    }
+  };
+
+  const handleDeleteTitleTranslation = async () => {
+    if (!confirm(t('topicDetail.confirmDeleteTranslation'))) return;
+    await deleteTopicTranslation(id, activeTransLang);
+    load();
+  };
+
+  const handleSaveContentTranslation = async (blockId: number) => {
+    const draft = contentTranslations[blockId];
+    if (!draft) return;
+    setTranslationSaving(blockId);
+    try {
+      await upsertTopicContentTranslation(id, blockId, activeTransLang, { content: draft.content, caption: draft.caption });
+      load();
+    } catch (err: any) {
+      alert(err.message || t('topicForm.error'));
+    } finally {
+      setTranslationSaving(null);
+    }
+  };
+
+  const handleDeleteContentTranslation = async (blockId: number) => {
+    if (!confirm(t('topicDetail.confirmDeleteTranslation'))) return;
+    await deleteTopicContentTranslation(id, blockId, activeTransLang);
+    load();
+  };
+
+  const handleAiTranslateTopic = async () => {
+    setAiTranslateLoading(true);
+    setAiTranslateError('');
+    try {
+      await aiTranslateTopic(id);
+      load();
+    } catch (err: any) {
+      setAiTranslateError(err.message || t('topicDetail.aiTranslateError'));
+    } finally {
+      setAiTranslateLoading(false);
+    }
+  };
+
   const loadAnalytics = useCallback(() => {
     setAnalyticsLoading(true);
     getTopicAnalytics(id)
@@ -287,6 +376,18 @@ export default function TopicDetailPage() {
   const { topic, problems } = data;
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/topics/shared/${shareToken}` : '';
 
+  // Localize for display only — the underlying topic/content objects keep
+  // their base (Russian) fields so editing and translation forms always work
+  // off the canonical text.
+  const displayTitle = lang === 'ru'
+    ? topic.title
+    : (topic.translations?.find((tr: any) => tr.language_code === lang)?.title || topic.title);
+  const localizeBlock = (block: any) => {
+    if (lang === 'ru') return block;
+    const tr = block.translations?.find((bt: any) => bt.language_code === lang);
+    return tr ? { ...block, content: tr.content, caption: tr.caption } : block;
+  };
+
   const analyticsUsers: Record<string, any> = {};
   analytics.forEach((s: any) => {
     if (!analyticsUsers[s.user_id]) {
@@ -308,7 +409,7 @@ export default function TopicDetailPage() {
           </>
         )}
         <span>/</span>
-        <span className="text-gray-900 font-medium">{topic.title}</span>
+        <span className="text-gray-900 font-medium">{displayTitle}</span>
       </div>
 
       {/* Header */}
@@ -316,9 +417,23 @@ export default function TopicDetailPage() {
         <div className="flex items-center gap-3">
           <span className="text-3xl">📁</span>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{topic.title}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{displayTitle}</h1>
             <div className="flex items-center gap-3 mt-1">
               <span className="text-sm text-gray-500">{topic.author?.name}</span>
+              {TRANSLATION_LANGS.some(l => topic.translations?.some((tr: any) => tr.language_code === l.code)) && (
+                <div className="flex gap-1">
+                  {LANGUAGES.map(l => (
+                    <button
+                      key={l.code}
+                      onClick={() => setLang(l.code)}
+                      title={l.label}
+                      className={`text-xs px-1.5 py-0.5 rounded border transition ${lang === l.code ? 'bg-blue-50 border-blue-300' : 'border-transparent hover:border-gray-200'}`}
+                    >
+                      {l.flag}
+                    </button>
+                  ))}
+                </div>
+              )}
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                 topic.visibility === 'public' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'
               }`}>
@@ -348,6 +463,7 @@ export default function TopicDetailPage() {
           ...(canEdit ? [
             { key: 'share', label: t('topicDetail.tabShare') },
             { key: 'analytics', label: t('topicDetail.tabAnalytics') },
+            { key: 'translate', label: t('topicDetail.tabTranslate') },
           ] : []),
         ].map((tab) => (
           <button
@@ -389,7 +505,7 @@ export default function TopicDetailPage() {
                         </button>
                       )}
                     </div>
-                    <ContentBlock block={block} />
+                    <ContentBlock block={localizeBlock(block)} />
                   </div>
                 ))}
             </div>
@@ -778,6 +894,119 @@ export default function TopicDetailPage() {
         </div>
       )}
 
+      {/* TAB: Translate */}
+      {activeTab === 'translate' && canEdit && (
+        <div className="space-y-6 max-w-3xl">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex gap-2">
+              {TRANSLATION_LANGS.map(l => (
+                <button
+                  key={l.code}
+                  onClick={() => setActiveTransLang(l.code)}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium border transition ${activeTransLang === l.code ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'}`}
+                >
+                  {l.flag} {l.label} {topic.translations?.some((tr: any) => tr.language_code === l.code) ? '✓' : ''}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={handleAiTranslateTopic}
+              disabled={aiTranslateLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+              {aiTranslateLoading ? t('topicDetail.aiTranslating') : t('topicDetail.aiTranslateBtn')}
+            </button>
+          </div>
+          {aiTranslateError && <p className="text-xs text-red-600">{aiTranslateError}</p>}
+
+          <div className="bg-white border border-gray-200 rounded-xl p-5">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {t('topicDetail.translateTitleLabel')} ({TRANSLATION_LANGS.find(l => l.code === activeTransLang)?.label})
+            </label>
+            <input
+              type="text"
+              value={titleTranslation}
+              onChange={(e) => setTitleTranslation(e.target.value)}
+              placeholder={topic.title}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={handleSaveTitleTranslation}
+                disabled={translationSaving === 'title'}
+                className="text-sm bg-blue-600 text-white px-4 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {t('topicDetail.saveTranslation')}
+              </button>
+              {topic.translations?.some((tr: any) => tr.language_code === activeTransLang) && (
+                <button
+                  onClick={handleDeleteTitleTranslation}
+                  className="text-sm text-red-600 border border-red-300 px-3 py-1.5 rounded-lg hover:bg-red-50"
+                >
+                  {t('topicDetail.deleteTranslation')}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {topic.contents && topic.contents.length > 0 && (
+            <div className="space-y-4">
+              {[...topic.contents]
+                .sort((a: any, b: any) => a.order_num - b.order_num)
+                .map((block: any) => {
+                  const draft = contentTranslations[block.id] || { content: block.content, caption: block.caption || '' };
+                  const isEditableContent = block.type === 'text' || block.type === 'code';
+                  const hasTranslation = block.translations?.some((tr: any) => tr.language_code === activeTransLang);
+                  return (
+                    <div key={block.id} className="bg-white border border-gray-200 rounded-xl p-5">
+                      <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                        {CONTENT_TYPES.find(ct => ct.key === block.type)?.icon} {CONTENT_TYPES.find(ct => ct.key === block.type)?.label}
+                      </span>
+                      {isEditableContent ? (
+                        <textarea
+                          value={draft.content}
+                          onChange={(e) => setContentTranslations(prev => ({ ...prev, [block.id]: { ...draft, content: e.target.value } }))}
+                          rows={block.type === 'code' ? 6 : 4}
+                          className={`mt-2 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${block.type === 'code' ? 'font-mono' : ''}`}
+                        />
+                      ) : (
+                        <p className="mt-2 text-xs text-gray-400 break-all">{block.content}</p>
+                      )}
+                      <input
+                        type="text"
+                        value={draft.caption}
+                        onChange={(e) => setContentTranslations(prev => ({ ...prev, [block.id]: { ...draft, caption: e.target.value } }))}
+                        placeholder={t('topicDetail.contentCaption')}
+                        className="mt-2 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => handleSaveContentTranslation(block.id)}
+                          disabled={translationSaving === block.id}
+                          className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {t('topicDetail.saveTranslation')}
+                        </button>
+                        {hasTranslation && (
+                          <button
+                            onClick={() => handleDeleteContentTranslation(block.id)}
+                            className="text-xs text-red-600 border border-red-300 px-3 py-1.5 rounded-lg hover:bg-red-50"
+                          >
+                            {t('topicDetail.deleteTranslation')}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Add Content Modal */}
       {showAddContent && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
@@ -813,15 +1042,15 @@ export default function TopicDetailPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  {contentType === 'text' ? t('topicDetail.contentText') : contentType === 'image' ? t('topicDetail.contentImageUrl') : contentType === 'video' ? t('topicDetail.contentVideoUrl') : t('topicDetail.contentLinkUrl')}
+                  {contentType === 'text' ? t('topicDetail.contentText') : contentType === 'code' ? t('topicDetail.contentCode') : contentType === 'image' ? t('topicDetail.contentImageUrl') : contentType === 'video' ? t('topicDetail.contentVideoUrl') : t('topicDetail.contentLinkUrl')}
                 </label>
-                {contentType === 'text' ? (
+                {contentType === 'text' || contentType === 'code' ? (
                   <textarea
                     value={contentValue}
                     onChange={(e) => setContentValue(e.target.value)}
-                    rows={5}
-                    placeholder={`${t('topicDetail.contentText')}...`}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    rows={contentType === 'code' ? 8 : 5}
+                    placeholder={contentType === 'code' ? 'print("Hello, world!")' : `${t('topicDetail.contentText')}...`}
+                    className={`w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${contentType === 'code' ? 'font-mono' : ''}`}
                   />
                 ) : (
                   <input

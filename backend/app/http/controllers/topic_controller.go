@@ -151,6 +151,8 @@ func GetTopic(c *fiber.Ctx) error {
 	if err := database.DB.
 		Preload("Author").
 		Preload("Contents").
+		Preload("Contents.Translations").
+		Preload("Translations").
 		Preload("AccessList").
 		Preload("Problems.Problem").
 		Preload("Children").
@@ -182,6 +184,8 @@ func GetTopic(c *fiber.Ctx) error {
 		}
 	}
 
+	applyTopicTranslation(&topic, c.Query("lang"))
+
 	// For each problem, attach solved status for the current user
 	type ProblemWithStatus struct {
 		models.TopicProblem
@@ -203,6 +207,32 @@ func GetTopic(c *fiber.Ctx) error {
 		"topic":    topic,
 		"problems": problems,
 	})
+}
+
+// applyTopicTranslation overwrites a topic's title and its content blocks'
+// content/caption with the matching-language translation, if one was
+// requested and exists. The base fields (and the untranslated Translations
+// arrays) always stay Russian by convention, so the frontend can still list
+// which languages are available.
+func applyTopicTranslation(topic *models.Topic, lang string) {
+	if lang == "" {
+		return
+	}
+	for _, tr := range topic.Translations {
+		if tr.LanguageCode == lang {
+			topic.Title = tr.Title
+			break
+		}
+	}
+	for i := range topic.Contents {
+		for _, tr := range topic.Contents[i].Translations {
+			if tr.LanguageCode == lang {
+				topic.Contents[i].Content = tr.Content
+				topic.Contents[i].Caption = tr.Caption
+				break
+			}
+		}
+	}
 }
 
 // UpdateTopic updates title and/or visibility of a topic.
@@ -236,6 +266,75 @@ func UpdateTopic(c *fiber.Ctx) error {
 
 	database.DB.Save(&topic)
 	return c.JSON(topic)
+}
+
+// validTopicLangs are the languages a translation row may exist for. The
+// topic's own Title/Content fields are always the base language (Russian by
+// convention), so it is not itself a valid translation target.
+var validTopicLangs = map[string]bool{"ky": true, "en": true}
+
+// UpsertTopicTranslation creates or updates a topic's translated title.
+func UpsertTopicTranslation(c *fiber.Ctx) error {
+	topicID, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid topic ID"})
+	}
+	langCode := c.Params("lang")
+	if !validTopicLangs[langCode] {
+		return c.Status(400).JSON(fiber.Map{"error": "Unsupported language code"})
+	}
+	userID := c.Locals("user_id").(float64)
+	role := c.Locals("role").(string)
+
+	var topic models.Topic
+	if err := database.DB.First(&topic, topicID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Topic not found"})
+	}
+	if topic.AuthorID != uint(userID) && role != "admin" {
+		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
+	}
+
+	type Request struct {
+		Title string `json:"title"`
+	}
+	var req Request
+	if err := c.BodyParser(&req); err != nil || strings.TrimSpace(req.Title) == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "title is required"})
+	}
+
+	var translation models.TopicTranslation
+	err = database.DB.Where("topic_id = ? AND language_code = ?", topic.ID, langCode).First(&translation).Error
+	if err != nil {
+		translation = models.TopicTranslation{TopicID: topic.ID, LanguageCode: langCode, Title: strings.TrimSpace(req.Title)}
+		database.DB.Create(&translation)
+	} else {
+		translation.Title = strings.TrimSpace(req.Title)
+		database.DB.Save(&translation)
+	}
+
+	return c.JSON(translation)
+}
+
+// DeleteTopicTranslation removes a topic's translated title for a language.
+func DeleteTopicTranslation(c *fiber.Ctx) error {
+	topicID, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid topic ID"})
+	}
+	langCode := c.Params("lang")
+	userID := c.Locals("user_id").(float64)
+	role := c.Locals("role").(string)
+
+	var topic models.Topic
+	if err := database.DB.First(&topic, topicID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Topic not found"})
+	}
+	if topic.AuthorID != uint(userID) && role != "admin" {
+		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
+	}
+
+	database.DB.Where("topic_id = ? AND language_code = ?", topic.ID, langCode).Delete(&models.TopicTranslation{})
+	return c.JSON(fiber.Map{"message": "Translation deleted"})
 }
 
 // DeleteTopic deletes a topic, all subtopics recursively, and all cascaded data.
@@ -296,7 +395,7 @@ func AddContent(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
 	}
 
-	validTypes := map[string]bool{"text": true, "image": true, "video": true, "link": true}
+	validTypes := map[string]bool{"text": true, "code": true, "image": true, "video": true, "link": true}
 	if !validTypes[req.Type] {
 		return c.Status(400).JSON(fiber.Map{"error": "Type must be one of: text, image, video, link"})
 	}
@@ -397,6 +496,85 @@ func DeleteContent(c *fiber.Ctx) error {
 
 	database.DB.Where("id = ? AND topic_id = ?", contentID, topicID).Delete(&models.TopicContent{})
 	return c.JSON(fiber.Map{"message": "Content block deleted"})
+}
+
+// UpsertContentTranslation creates or updates a translated content/caption
+// pair for a single content block. For non-text/code blocks (image, video,
+// link) Content is not user-editable — only Caption may be translated — but
+// the field is still accepted so it can mirror the original for display.
+func UpsertContentTranslation(c *fiber.Ctx) error {
+	topicID, _ := c.ParamsInt("id")
+	contentID, err := c.ParamsInt("content_id")
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid content ID"})
+	}
+	langCode := c.Params("lang")
+	if !validTopicLangs[langCode] {
+		return c.Status(400).JSON(fiber.Map{"error": "Unsupported language code"})
+	}
+	userID := c.Locals("user_id").(float64)
+	role := c.Locals("role").(string)
+
+	var topic models.Topic
+	if err := database.DB.First(&topic, topicID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Topic not found"})
+	}
+	if topic.AuthorID != uint(userID) && role != "admin" {
+		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
+	}
+
+	var block models.TopicContent
+	if err := database.DB.Where("id = ? AND topic_id = ?", contentID, topicID).First(&block).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Content block not found"})
+	}
+
+	type Request struct {
+		Content string `json:"content"`
+		Caption string `json:"caption"`
+	}
+	var req Request
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
+	}
+
+	content := req.Content
+	if block.Type != "text" && block.Type != "code" {
+		// URL-based blocks keep the original content in every language.
+		content = block.Content
+	}
+
+	var translation models.TopicContentTranslation
+	err = database.DB.Where("content_id = ? AND language_code = ?", block.ID, langCode).First(&translation).Error
+	if err != nil {
+		translation = models.TopicContentTranslation{ContentID: block.ID, LanguageCode: langCode, Content: content, Caption: req.Caption}
+		database.DB.Create(&translation)
+	} else {
+		translation.Content = content
+		translation.Caption = req.Caption
+		database.DB.Save(&translation)
+	}
+
+	return c.JSON(translation)
+}
+
+// DeleteContentTranslation removes a content block's translation for a language.
+func DeleteContentTranslation(c *fiber.Ctx) error {
+	topicID, _ := c.ParamsInt("id")
+	contentID, _ := c.ParamsInt("content_id")
+	langCode := c.Params("lang")
+	userID := c.Locals("user_id").(float64)
+	role := c.Locals("role").(string)
+
+	var topic models.Topic
+	if err := database.DB.First(&topic, topicID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Topic not found"})
+	}
+	if topic.AuthorID != uint(userID) && role != "admin" {
+		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
+	}
+
+	database.DB.Where("content_id = ? AND language_code = ?", contentID, langCode).Delete(&models.TopicContentTranslation{})
+	return c.JSON(fiber.Map{"message": "Translation deleted"})
 }
 
 // ---- Problems ----
@@ -593,12 +771,16 @@ func GetTopicByToken(c *fiber.Ctx) error {
 	if err := database.DB.
 		Preload("Author").
 		Preload("Contents").
+		Preload("Contents.Translations").
+		Preload("Translations").
 		Preload("Problems.Problem").
 		Preload("Children").
 		Where("share_token = ?", token).
 		First(&topic).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Topic not found"})
 	}
+
+	applyTopicTranslation(&topic, c.Query("lang"))
 
 	type ProblemWithStatus struct {
 		models.TopicProblem

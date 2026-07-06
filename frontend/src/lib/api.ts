@@ -164,15 +164,75 @@ export async function createTopic(data: { title: string; visibility: string; par
   return res.json();
 }
 
-export async function getTopic(id: number | string) {
-  const res = await fetch(`${getBaseUrl()}/topics/${id}`, { headers: getAuthHeaders() });
+export async function getTopic(id: number | string, lang?: string) {
+  const url = new URL(`${getBaseUrl()}/topics/${id}`);
+  if (lang) url.searchParams.set('lang', lang);
+  const res = await fetch(url.toString(), { headers: getAuthHeaders() });
   if (!res.ok) throw new Error('Topic not found');
   return res.json();
 }
 
-export async function getTopicByToken(token: string) {
-  const res = await fetch(`${getBaseUrl()}/topics/shared/${token}`, { headers: getAuthHeaders() });
+export async function getTopicByToken(token: string, lang?: string) {
+  const url = new URL(`${getBaseUrl()}/topics/shared/${token}`);
+  if (lang) url.searchParams.set('lang', lang);
+  const res = await fetch(url.toString(), { headers: getAuthHeaders() });
   if (!res.ok) throw new Error('Topic not found');
+  return res.json();
+}
+
+export async function upsertTopicTranslation(topicId: number | string, langCode: string, title: string) {
+  const res = await fetch(`${getBaseUrl()}/topics/${topicId}/translations/${langCode}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ title }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to save translation');
+  }
+  return res.json();
+}
+
+export async function deleteTopicTranslation(topicId: number | string, langCode: string) {
+  const res = await fetch(`${getBaseUrl()}/topics/${topicId}/translations/${langCode}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to delete translation');
+  return res.json();
+}
+
+export async function upsertTopicContentTranslation(topicId: number | string, contentId: number, langCode: string, data: { content?: string; caption?: string }) {
+  const res = await fetch(`${getBaseUrl()}/topics/${topicId}/contents/${contentId}/translations/${langCode}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to save translation');
+  }
+  return res.json();
+}
+
+export async function deleteTopicContentTranslation(topicId: number | string, contentId: number, langCode: string) {
+  const res = await fetch(`${getBaseUrl()}/topics/${topicId}/contents/${contentId}/translations/${langCode}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to delete translation');
+  return res.json();
+}
+
+export async function aiTranslateTopic(topicId: number | string) {
+  const res = await fetch(`${getBaseUrl()}/ai/topics/${topicId}/translate`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'AI translate failed');
+  }
   return res.json();
 }
 

@@ -331,6 +331,76 @@ Do not include any text outside the JSON object.`
 	return &result, nil
 }
 
+// TopicContentInput describes one content block passed to TranslateTopic.
+// Content is only populated for "text"/"code" blocks — image/video/link URLs
+// are never sent for translation, only their (optional) caption is.
+type TopicContentInput struct {
+	ID      uint   `json:"id"`
+	Type    string `json:"type"`
+	Content string `json:"content,omitempty"`
+	Caption string `json:"caption,omitempty"`
+}
+
+// TopicBlockTranslation is one content block's translated content/caption.
+type TopicBlockTranslation struct {
+	Content string `json:"content,omitempty"`
+	Caption string `json:"caption,omitempty"`
+}
+
+// TopicLangTranslation is a topic's translated title plus, keyed by content
+// block ID (as a string, since JSON object keys must be strings), each
+// block's translated content/caption.
+type TopicLangTranslation struct {
+	Title    string                            `json:"title"`
+	Contents map[string]TopicBlockTranslation  `json:"contents"`
+}
+
+// TopicTranslationResult is the output of TranslateTopic: translations into
+// Kyrgyz and English. The topic's base language (Russian, by convention) is
+// never re-translated into itself.
+type TopicTranslationResult struct {
+	Ky TopicLangTranslation `json:"ky"`
+	En TopicLangTranslation `json:"en"`
+}
+
+// TranslateTopic translates a topic's title and its content blocks' natural
+// text into Kyrgyz and English. Code content and media URLs are passed
+// through unchanged by the caller — only captions are translated for those
+// block types.
+func (c *Client) TranslateTopic(title string, blocks []TopicContentInput) (*TopicTranslationResult, error) {
+	blocksJSON, err := json.Marshal(blocks)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode content blocks: %w", err)
+	}
+
+	system := `You are a professional translator working for a competitive-programming online judge platform.
+Given a learning topic's title and its content blocks (each with an "id", a "type", and optionally "content" and/or "caption"), translate the title and every provided "content"/"caption" field into Kyrgyz (ky) and English (en).
+Rules:
+- Preserve meaning and tone faithfully; keep any Markdown formatting, backticked code spans, and numbers/units intact.
+- Never translate or alter block "content" for blocks whose type is "image", "video" or "link" — only translate their "caption" if present. (Such blocks are given to you without a "content" field; do not invent one.)
+- For "text" and "code" block types, translate "content" fully; for "code" blocks specifically, only translate/paraphrase comments or prose inside the content and leave actual code syntax untouched — if you are unsure, leave "content" as-is.
+- If a block has no "caption" in the input, omit "caption" from your output for that block. If a block has no "content" in the input, omit "content" from your output for that block.
+Respond with STRICT JSON only, matching exactly this shape:
+{
+  "ky": {"title": "...", "contents": {"<block id>": {"content": "...", "caption": "..."}}},
+  "en": {"title": "...", "contents": {"<block id>": {"content": "...", "caption": "..."}}}
+}
+Do not include any text outside the JSON object.`
+
+	user := fmt.Sprintf("Title: %s\nContent blocks (JSON array): %s", title, string(blocksJSON))
+
+	raw, err := c.chatCompletion(system, user)
+	if err != nil {
+		return nil, err
+	}
+
+	var result TopicTranslationResult
+	if err := json.Unmarshal([]byte(raw), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse AI response as JSON: %w", err)
+	}
+	return &result, nil
+}
+
 // OverviewDraft is an AI-drafted overview text block for an existing topic.
 type OverviewDraft struct {
 	Content string `json:"content"`

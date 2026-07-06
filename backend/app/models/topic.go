@@ -12,22 +12,25 @@ type Topic struct {
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 
-	Author     User           `gorm:"foreignKey:AuthorID" json:"author,omitempty"`
-	Children   []Topic        `gorm:"foreignKey:ParentID" json:"children,omitempty"`
-	Contents   []TopicContent `gorm:"foreignKey:TopicID;constraint:OnDelete:CASCADE" json:"contents,omitempty"`
-	Problems   []TopicProblem `gorm:"foreignKey:TopicID;constraint:OnDelete:CASCADE" json:"problems,omitempty"`
-	AccessList []TopicAccess  `gorm:"foreignKey:TopicID;constraint:OnDelete:CASCADE" json:"access_list,omitempty"`
+	Author       User                `gorm:"foreignKey:AuthorID" json:"author,omitempty"`
+	Children     []Topic             `gorm:"foreignKey:ParentID" json:"children,omitempty"`
+	Contents     []TopicContent      `gorm:"foreignKey:TopicID;constraint:OnDelete:CASCADE" json:"contents,omitempty"`
+	Problems     []TopicProblem      `gorm:"foreignKey:TopicID;constraint:OnDelete:CASCADE" json:"problems,omitempty"`
+	AccessList   []TopicAccess       `gorm:"foreignKey:TopicID;constraint:OnDelete:CASCADE" json:"access_list,omitempty"`
+	Translations []TopicTranslation  `gorm:"foreignKey:TopicID;constraint:OnDelete:CASCADE" json:"translations,omitempty"`
 }
 
-// TopicContent holds rich content blocks: text, image URL, YouTube link, or arbitrary link
+// TopicContent holds rich content blocks: text, code, image URL, YouTube link, or arbitrary link
 type TopicContent struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	TopicID   uint      `json:"topic_id"`
-	Type      string    `json:"type"` // text, image, video, link
+	Type      string    `json:"type"` // text, code, image, video, link
 	Content   string    `json:"content"`
 	Caption   string    `json:"caption"`
 	OrderNum  int       `json:"order_num"`
 	CreatedAt time.Time `json:"created_at"`
+
+	Translations []TopicContentTranslation `gorm:"foreignKey:ContentID;constraint:OnDelete:CASCADE" json:"translations,omitempty"`
 }
 
 // TopicProblem is the many-to-many join between topics and problems

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"strings"
 
 	"onlineJudge/backend/app/models"
@@ -232,4 +233,95 @@ func GenerateTopicOverview(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(draft)
+}
+
+// TranslateTopic godoc
+// @Summary AI: translate a topic's title and content blocks
+// @Description Uses DeepSeek to translate the topic's title and content blocks into ky/en and saves the result as translation rows (topic owner or admin only).
+// @Tags AI
+// @Produce json
+// @Param id path int true "Topic ID"
+// @Success 200 {object} models.Topic
+// @Router /ai/topics/{id}/translate [post]
+func TranslateTopic(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(float64)
+	role := c.Locals("role").(string)
+
+	var topic models.Topic
+	if err := database.DB.Preload("Contents").First(&topic, c.Params("id")).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Topic not found"})
+	}
+	if topic.AuthorID != uint(userID) && role != "admin" {
+		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
+	}
+
+	blocks := make([]ai.TopicContentInput, 0, len(topic.Contents))
+	for _, blk := range topic.Contents {
+		input := ai.TopicContentInput{ID: blk.ID, Type: blk.Type, Caption: blk.Caption}
+		if blk.Type == "text" || blk.Type == "code" {
+			input.Content = blk.Content
+		}
+		blocks = append(blocks, input)
+	}
+
+	client := ai.NewClient()
+	result, err := client.TranslateTopic(topic.Title, blocks)
+	if err != nil {
+		return c.Status(502).JSON(fiber.Map{"error": "AI request failed: " + err.Error()})
+	}
+
+	langResults := map[string]ai.TopicLangTranslation{"ky": result.Ky, "en": result.En}
+
+	txErr := database.DB.Transaction(func(tx *gorm.DB) error {
+		for langCode, lr := range langResults {
+			if strings.TrimSpace(lr.Title) == "" {
+				continue
+			}
+
+			var tt models.TopicTranslation
+			if err := tx.Where("topic_id = ? AND language_code = ?", topic.ID, langCode).First(&tt).Error; err != nil {
+				tt = models.TopicTranslation{TopicID: topic.ID, LanguageCode: langCode, Title: lr.Title}
+				if err := tx.Create(&tt).Error; err != nil {
+					return err
+				}
+			} else {
+				tt.Title = lr.Title
+				if err := tx.Save(&tt).Error; err != nil {
+					return err
+				}
+			}
+
+			for _, blk := range topic.Contents {
+				bt, ok := lr.Contents[fmt.Sprint(blk.ID)]
+				if !ok {
+					continue
+				}
+				content := bt.Content
+				if blk.Type != "text" && blk.Type != "code" {
+					content = blk.Content
+				}
+
+				var tct models.TopicContentTranslation
+				if err := tx.Where("content_id = ? AND language_code = ?", blk.ID, langCode).First(&tct).Error; err != nil {
+					tct = models.TopicContentTranslation{ContentID: blk.ID, LanguageCode: langCode, Content: content, Caption: bt.Caption}
+					if err := tx.Create(&tct).Error; err != nil {
+						return err
+					}
+				} else {
+					tct.Content = content
+					tct.Caption = bt.Caption
+					if err := tx.Save(&tct).Error; err != nil {
+						return err
+					}
+				}
+			}
+		}
+		return nil
+	})
+	if txErr != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to save translations: " + txErr.Error()})
+	}
+
+	database.DB.Preload("Translations").Preload("Contents.Translations").First(&topic, topic.ID)
+	return c.JSON(topic)
 }

@@ -85,10 +85,17 @@ func SetupRoutes(app *fiber.App) {
 	// Topic analytics
 	api.Get("/topics/:id/analytics", controllers.GetTopicAnalytics)
 
+	// Topic & content translations
+	api.Put("/topics/:id/translations/:lang", controllers.UpsertTopicTranslation)
+	api.Delete("/topics/:id/translations/:lang", controllers.DeleteTopicTranslation)
+	api.Put("/topics/:id/contents/:content_id/translations/:lang", controllers.UpsertContentTranslation)
+	api.Delete("/topics/:id/contents/:content_id/translations/:lang", controllers.DeleteContentTranslation)
+
 	// AI assistants (any authenticated user; permission checks happen inside the controllers)
 	api.Post("/ai/problems/draft", controllers.DraftProblem)
 	api.Post("/ai/topics/suggest", controllers.SuggestTopic)
 	api.Post("/ai/topics/:id/overview", controllers.GenerateTopicOverview)
+	api.Post("/ai/topics/:id/translate", controllers.TranslateTopic)
 
 	// Admin Routes
 	admin := api.Group("/admin")
