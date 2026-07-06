@@ -30,6 +30,11 @@ function LoginContent() {
         <div className="text-center">
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">{t('login.title')}</h2>
         </div>
+        {searchParams.get('expired') && (
+          <p className="text-center text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-md py-2 px-3">
+            {t('login.sessionExpired')}
+          </p>
+        )}
         <div className="mt-8 space-y-6">
           {url ? (
             <a

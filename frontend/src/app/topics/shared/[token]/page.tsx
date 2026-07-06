@@ -195,7 +195,7 @@ export default function SharedTopicPage() {
                         <td className="px-4 py-3 text-sm text-gray-400 font-mono">{i + 1}</td>
                         <td className="px-4 py-3">
                           <Link
-                            href={`/problems/${tp.problem_id}`}
+                            href={`/problems/${tp.problem_id}?topic_token=${token}`}
                             className="font-medium text-gray-900 hover:text-blue-600 transition text-sm"
                           >
                             {tp.problem?.title || `#${tp.problem_id}`}
@@ -211,7 +211,7 @@ export default function SharedTopicPage() {
                             </span>
                           ) : (
                             <Link
-                              href={`/problems/${tp.problem_id}`}
+                              href={`/problems/${tp.problem_id}?topic_token=${token}`}
                               className="text-xs text-blue-600 hover:underline"
                             >
                               {t('topicShared.solve')}

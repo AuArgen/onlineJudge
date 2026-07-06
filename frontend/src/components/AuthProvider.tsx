@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { installAuthInterceptor } from '@/lib/authInterceptor';
 
 interface User {
   id: number;
@@ -25,6 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    installAuthInterceptor();
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     if (token && userData) {

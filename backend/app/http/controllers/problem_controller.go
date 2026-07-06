@@ -172,6 +172,17 @@ func GetProblem(c *fiber.Ctx) error {
 		hasAccess = true
 	} else if shareToken != "" && problem.ShareToken == shareToken {
 		hasAccess = true
+	} else if topicToken := c.Query("topic_token"); topicToken != "" {
+		// Problem was reached via a shared topic link — grant access if the
+		// topic that owns this token actually contains the problem.
+		var count int64
+		database.DB.Table("topic_problems").
+			Joins("JOIN topics ON topics.id = topic_problems.topic_id").
+			Where("topic_problems.problem_id = ? AND topics.share_token = ?", problem.ID, topicToken).
+			Count(&count)
+		if count > 0 {
+			hasAccess = true
+		}
 	} else if userID > 0 {
 		// Check AccessList
 		var count int64

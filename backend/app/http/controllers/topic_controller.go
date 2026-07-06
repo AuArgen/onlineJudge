@@ -641,19 +641,6 @@ func GetTopicAnalytics(c *fiber.Ctx) error {
 		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
 	}
 
-	// Collect problem IDs in the topic
-	var topicProblems []models.TopicProblem
-	database.DB.Where("topic_id = ?", topicID).Find(&topicProblems)
-
-	if len(topicProblems) == 0 {
-		return c.JSON(fiber.Map{"problems": []interface{}{}, "users": []interface{}{}})
-	}
-
-	problemIDs := make([]uint, 0, len(topicProblems))
-	for _, tp := range topicProblems {
-		problemIDs = append(problemIDs, tp.ProblemID)
-	}
-
 	type UserStat struct {
 		UserID      uint   `json:"user_id"`
 		UserName    string `json:"user_name"`
@@ -664,7 +651,22 @@ func GetTopicAnalytics(c *fiber.Ctx) error {
 		Attempts    int64  `json:"attempts"`
 	}
 
-	var stats []UserStat
+	// Collect problem IDs in the topic
+	var topicProblems []models.TopicProblem
+	database.DB.Where("topic_id = ?", topicID).Find(&topicProblems)
+
+	if len(topicProblems) == 0 {
+		// Keep the same shape as the populated case below (a flat array) —
+		// the frontend calls .forEach/.map on this response unconditionally.
+		return c.JSON([]UserStat{})
+	}
+
+	problemIDs := make([]uint, 0, len(topicProblems))
+	for _, tp := range topicProblems {
+		problemIDs = append(problemIDs, tp.ProblemID)
+	}
+
+	stats := []UserStat{}
 	database.DB.Raw(`
 		SELECT
 			u.id AS user_id,

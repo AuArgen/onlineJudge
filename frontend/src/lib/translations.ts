@@ -193,6 +193,7 @@ const dict: Record<string, Record<LangCode, string>> = {
   // Login
   'login.title': { ru: 'Войти в аккаунт', ky: 'Каттоо эсебине кирүү', en: 'Log in to account' },
   'login.withGoogle': { ru: 'Войти через Google', ky: 'Google аркылуу кирүү', en: 'Login with Google' },
+  'login.sessionExpired': { ru: 'Сессия истекла. Пожалуйста, войдите снова.', ky: 'Сессиянын убактысы бүттү. Кайра кириңиз.', en: 'Your session has expired. Please log in again.' },
 
   // History
   'history.title': { ru: 'История попыток', ky: 'Аракеттер тарыхы', en: 'Attempt history' },
