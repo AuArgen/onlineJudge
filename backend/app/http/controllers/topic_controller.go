@@ -7,6 +7,7 @@ import (
 	"onlineJudge/backend/database"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -824,13 +825,15 @@ func GetTopicAnalytics(c *fiber.Ctx) error {
 	}
 
 	type UserStat struct {
-		UserID      uint   `json:"user_id"`
-		UserName    string `json:"user_name"`
-		UserEmail   string `json:"user_email"`
-		ProblemID   uint   `json:"problem_id"`
-		ProblemTitle string `json:"problem_title"`
-		Solved      bool   `json:"solved"`
-		Attempts    int64  `json:"attempts"`
+		UserID        uint       `json:"user_id"`
+		UserName      string     `json:"user_name"`
+		UserEmail     string     `json:"user_email"`
+		ProblemID     uint       `json:"problem_id"`
+		ProblemTitle  string     `json:"problem_title"`
+		Solved        bool       `json:"solved"`
+		Attempts      int64      `json:"attempts"`
+		SolvedAt      *time.Time `json:"solved_at"`
+		LastAttemptAt *time.Time `json:"last_attempt_at"`
 	}
 
 	// Collect problem IDs in the topic
@@ -857,7 +860,9 @@ func GetTopicAnalytics(c *fiber.Ctx) error {
 			p.id AS problem_id,
 			p.title AS problem_title,
 			BOOL_OR(s.status = 'Accepted') AS solved,
-			COUNT(s.id) AS attempts
+			COUNT(s.id) AS attempts,
+			MIN(s.created_at) FILTER (WHERE s.status = 'Accepted') AS solved_at,
+			MAX(s.created_at) AS last_attempt_at
 		FROM submissions s
 		JOIN users u ON u.id = s.user_id
 		JOIN problems p ON p.id = s.problem_id
@@ -867,4 +872,72 @@ func GetTopicAnalytics(c *fiber.Ctx) error {
 	`, problemIDs).Scan(&stats)
 
 	return c.JSON(stats)
+}
+
+// GetTopicUserAnalytics returns one user's full submission history on the
+// topic's problems — when each attempt happened, its verdict, and the code —
+// so the topic owner can review how a student actually solved each problem.
+// Same access rule as GetTopicAnalytics: topic owner or admin only.
+func GetTopicUserAnalytics(c *fiber.Ctx) error {
+	topicID, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid topic ID"})
+	}
+	targetUserID, err := c.ParamsInt("user_id")
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid user ID"})
+	}
+	userID := c.Locals("user_id").(float64)
+	role := c.Locals("role").(string)
+
+	var topic models.Topic
+	if err := database.DB.First(&topic, topicID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Topic not found"})
+	}
+	if topic.AuthorID != uint(userID) && role != "admin" {
+		return c.Status(403).JSON(fiber.Map{"error": "Access denied"})
+	}
+
+	var topicProblems []models.TopicProblem
+	database.DB.Where("topic_id = ?", topicID).Find(&topicProblems)
+
+	type UserSubmission struct {
+		ID            uint      `json:"id"`
+		ProblemID     uint      `json:"problem_id"`
+		ProblemTitle  string    `json:"problem_title"`
+		Language      string    `json:"language"`
+		Status        string    `json:"status"`
+		ExecutionTime string    `json:"execution_time"`
+		SourceCode    string    `json:"source_code"`
+		CreatedAt     time.Time `json:"created_at"`
+	}
+
+	if len(topicProblems) == 0 {
+		return c.JSON([]UserSubmission{})
+	}
+
+	problemIDs := make([]uint, 0, len(topicProblems))
+	for _, tp := range topicProblems {
+		problemIDs = append(problemIDs, tp.ProblemID)
+	}
+
+	subs := []UserSubmission{}
+	database.DB.Raw(`
+		SELECT
+			s.id,
+			s.problem_id,
+			p.title AS problem_title,
+			s.language,
+			s.status,
+			s.execution_time,
+			s.source_code,
+			s.created_at
+		FROM submissions s
+		JOIN problems p ON p.id = s.problem_id
+		WHERE s.user_id = ? AND s.problem_id IN ? AND s.contest_id IS NULL
+		ORDER BY s.created_at DESC
+		LIMIT 300
+	`, targetUserID, problemIDs).Scan(&subs)
+
+	return c.JSON(subs)
 }

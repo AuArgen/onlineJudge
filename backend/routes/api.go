@@ -84,6 +84,7 @@ func SetupRoutes(app *fiber.App) {
 
 	// Topic analytics
 	api.Get("/topics/:id/analytics", controllers.GetTopicAnalytics)
+	api.Get("/topics/:id/analytics/:user_id", controllers.GetTopicUserAnalytics)
 
 	// Topic & content translations
 	api.Put("/topics/:id/translations/:lang", controllers.UpsertTopicTranslation)

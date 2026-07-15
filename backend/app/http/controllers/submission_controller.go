@@ -206,10 +206,22 @@ func RunCode(c *fiber.Ctx) error {
 		Language   string `json:"language"`
 		SourceCode string `json:"source_code"`
 		Stdin      string `json:"stdin"`
+		// Stdins lets the client test the code against several inputs (e.g.
+		// the problem's sample tests) in one container session — compile
+		// once, run N times. When set, it takes precedence over Stdin.
+		Stdins []string `json:"stdins"`
 	}
 	var req RunRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
+	}
+
+	inputs := req.Stdins
+	if len(inputs) == 0 {
+		inputs = []string{req.Stdin}
+	}
+	if len(inputs) > 10 {
+		return c.Status(400).JSON(fiber.Map{"error": "Too many inputs (max 10)"})
 	}
 
 	langID := 0
@@ -233,22 +245,37 @@ func RunCode(c *fiber.Ctx) error {
 		LanguageID:  langID,
 		TimeLimit:   10.0,
 		MemoryLimit: 256,
-	}, []string{req.Stdin})
+	}, inputs)
 
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	r := results[0]
-	stdout, stdoutTruncated := truncateForDisplay(r.Stdout)
-	stderr, stderrTruncated := truncateForDisplay(r.Stderr)
+	runResults := make([]fiber.Map, len(results))
+	for i, r := range results {
+		stdout, stdoutTruncated := truncateForDisplay(r.Stdout)
+		stderr, stderrTruncated := truncateForDisplay(r.Stderr)
+		runResults[i] = fiber.Map{
+			"stdout":           stdout,
+			"stderr":           stderr,
+			"execution_time":   r.ExecutionTime,
+			"timed_out":        r.TimedOut,
+			"stdout_truncated": stdoutTruncated,
+			"stderr_truncated": stderrTruncated,
+		}
+	}
+
+	// Top-level fields mirror the first result so existing single-stdin
+	// clients keep working; "results" carries the full per-input list.
+	first := runResults[0]
 	return c.JSON(fiber.Map{
-		"stdout":           stdout,
-		"stderr":           stderr,
-		"execution_time":   r.ExecutionTime,
-		"timed_out":        r.TimedOut,
-		"stdout_truncated": stdoutTruncated,
-		"stderr_truncated": stderrTruncated,
+		"stdout":           first["stdout"],
+		"stderr":           first["stderr"],
+		"execution_time":   first["execution_time"],
+		"timed_out":        first["timed_out"],
+		"stdout_truncated": first["stdout_truncated"],
+		"stderr_truncated": first["stderr_truncated"],
+		"results":          runResults,
 	})
 }
 

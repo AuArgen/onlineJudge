@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import {
   getTopic, generateTopicShareToken, shareTopicByEmail, revokeTopicAccess,
   addTopicContent, deleteTopicContent, addTopicProblem, removeTopicProblem,
-  createTopic, getTopicAnalytics, getProblems, aiGenerateTopicProblems,
+  createTopic, getTopicAnalytics, getTopicUserAnalytics, getProblems, aiGenerateTopicProblems,
   aiGenerateTopicOverview, upsertTopicTranslation, deleteTopicTranslation,
   upsertTopicContentTranslation, deleteTopicContentTranslation, aiTranslateTopic,
 } from '@/lib/api';
@@ -78,8 +78,9 @@ function ContentBlock({ block }: { block: any }) {
   }
 }
 
-export default function TopicDetailPage() {
+function TopicDetailContent() {
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { t, lang, setLang } = useLanguage();
 
@@ -87,7 +88,11 @@ export default function TopicDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'problems' | 'analytics' | 'share' | 'translate'>('overview');
+  // ?tab=problems lets the problem page link straight back to the problem
+  // list the user came from, not just the topic's overview tab.
+  const [activeTab, setActiveTab] = useState<'overview' | 'problems' | 'analytics' | 'share' | 'translate'>(
+    searchParams.get('tab') === 'problems' ? 'problems' : 'overview'
+  );
 
   const [showAddContent, setShowAddContent] = useState(false);
   const [contentType, setContentType] = useState('text');
@@ -122,6 +127,7 @@ export default function TopicDetailPage() {
 
   const [analytics, setAnalytics] = useState<any[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsUser, setAnalyticsUser] = useState<{ id: string; name: string; email: string } | null>(null);
 
   const CONTENT_TYPES = [
     { key: 'text', label: t('topicDetail.contentText'), icon: '📝' },
@@ -393,9 +399,18 @@ export default function TopicDetailPage() {
     if (!analyticsUsers[s.user_id]) {
       analyticsUsers[s.user_id] = { user_name: s.user_name, user_email: s.user_email, problems: {} };
     }
-    analyticsUsers[s.user_id].problems[s.problem_id] = { solved: s.solved, attempts: s.attempts, title: s.problem_title };
+    analyticsUsers[s.user_id].problems[s.problem_id] = {
+      solved: s.solved,
+      attempts: s.attempts,
+      title: s.problem_title,
+      solved_at: s.solved_at,
+      last_attempt_at: s.last_attempt_at,
+    };
   });
-  const analyticsProblemIds = [...new Set(analytics.map((s: any) => s.problem_id))];
+  // Columns follow the topic's own problem order (including problems nobody
+  // attempted yet), so the matrix always matches the problems tab.
+  const analyticsProblems = [...(problems || [])].sort((a: any, b: any) => a.order_num - b.order_num);
+  const analyticsProblemIds = analyticsProblems.map((tp: any) => tp.problem_id);
 
   return (
     <div className="max-w-5xl mx-auto py-8 px-4">
@@ -594,7 +609,7 @@ export default function TopicDetailPage() {
                         <td className="px-4 py-3 text-sm text-gray-400 font-mono">{i + 1}</td>
                         <td className="px-4 py-3">
                           <Link
-                            href={`/problems/${tp.problem_id}`}
+                            href={`/problems/${tp.problem_id}?topic_id=${id}`}
                             className="font-medium text-gray-900 hover:text-blue-600 transition text-sm"
                           >
                             {tp.problem?.title || `#${tp.problem_id}`}
@@ -833,65 +848,118 @@ export default function TopicDetailPage() {
               <p className="text-gray-400">{t('topicDetail.analyticsEmpty')}</p>
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">{t('topicDetail.analyticsUser')}</th>
-                    {analyticsProblemIds.map((pid: any) => {
-                      const stat = analytics.find((s: any) => s.problem_id === pid);
-                      return (
-                        <th key={pid} className="text-center px-3 py-3 text-xs font-semibold text-gray-500 uppercase max-w-24 truncate">
-                          {stat?.problem_title?.slice(0, 15) || `#${pid}`}
+            <div className="space-y-4">
+              {/* Problem legend: the matrix columns are numbered, full titles live here */}
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('topicDetail.analyticsLegend')}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                  {analyticsProblems.map((tp: any, i: number) => (
+                    <Link
+                      key={tp.problem_id}
+                      href={`/problems/${tp.problem_id}?topic_id=${id}`}
+                      className="text-sm text-gray-700 hover:text-blue-600 transition truncate"
+                    >
+                      <span className="font-mono text-xs text-gray-400 mr-1.5">#{i + 1}</span>
+                      {tp.problem?.title || `#${tp.problem_id}`}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">{t('topicDetail.analyticsUser')}</th>
+                      {analyticsProblems.map((tp: any, i: number) => (
+                        <th
+                          key={tp.problem_id}
+                          className="text-center px-3 py-3 text-xs font-semibold text-gray-500 uppercase"
+                          title={tp.problem?.title || `#${tp.problem_id}`}
+                        >
+                          #{i + 1}
                         </th>
+                      ))}
+                      <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">{t('topicDetail.analyticsTotal')}</th>
+                      <th className="w-10" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {Object.entries(analyticsUsers).map(([uid, userData]: any) => {
+                      const solved = Object.values(userData.problems as Record<string, any>).filter((p: any) => p.solved).length;
+                      const openUser = () => setAnalyticsUser({ id: uid, name: userData.user_name, email: userData.user_email });
+                      return (
+                        <tr key={uid} className="hover:bg-gray-50 cursor-pointer" onClick={openUser}>
+                          <td className="px-4 py-3">
+                            <p className="font-medium text-gray-900">{userData.user_name}</p>
+                            <p className="text-xs text-gray-400">{userData.user_email}</p>
+                          </td>
+                          {analyticsProblemIds.map((pid: any) => {
+                            const p = userData.problems[pid];
+                            return (
+                              <td
+                                key={pid}
+                                className="px-3 py-3 text-center"
+                                title={p ? `${p.title}\n${t('topicDetail.analyticsAttempts')}: ${p.attempts}${p.solved_at ? `\n${t('topicDetail.analyticsSolvedAt')}: ${new Date(p.solved_at).toLocaleString()}` : ''}` : undefined}
+                              >
+                                {p ? (
+                                  p.solved ? (
+                                    <div className="inline-flex flex-col items-center">
+                                      <span className="inline-flex items-center justify-center w-6 h-6 bg-green-100 text-green-600 rounded-full">
+                                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                        </svg>
+                                      </span>
+                                      {p.solved_at && (
+                                        <span className="text-[10px] text-gray-400 mt-0.5 whitespace-nowrap">
+                                          {new Date(p.solved_at).toLocaleDateString()}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-red-400 font-medium">{p.attempts}x</span>
+                                  )
+                                ) : (
+                                  <span className="text-gray-200">—</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                          <td className="px-4 py-3 text-center">
+                            <span className="font-semibold text-gray-900">{solved}</span>
+                            <span className="text-gray-400">/{analyticsProblemIds.length}</span>
+                          </td>
+                          <td className="px-2 py-3 text-right">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openUser(); }}
+                              className="text-xs text-blue-600 hover:underline whitespace-nowrap"
+                            >
+                              {t('topicDetail.analyticsDetails')}
+                            </button>
+                          </td>
+                        </tr>
                       );
                     })}
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">{t('topicDetail.analyticsTotal')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {Object.entries(analyticsUsers).map(([uid, userData]: any) => {
-                    const solved = Object.values(userData.problems as Record<string, any>).filter((p: any) => p.solved).length;
-                    return (
-                      <tr key={uid} className="hover:bg-gray-50">
-                        <td className="px-4 py-3">
-                          <p className="font-medium text-gray-900">{userData.user_name}</p>
-                          <p className="text-xs text-gray-400">{userData.user_email}</p>
-                        </td>
-                        {analyticsProblemIds.map((pid: any) => {
-                          const p = userData.problems[pid];
-                          return (
-                            <td key={pid} className="px-3 py-3 text-center">
-                              {p ? (
-                                <div>
-                                  {p.solved ? (
-                                    <span className="inline-flex items-center justify-center w-6 h-6 bg-green-100 text-green-600 rounded-full">
-                                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                      </svg>
-                                    </span>
-                                  ) : (
-                                    <span className="text-xs text-gray-400">{p.attempts}x</span>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-gray-200">—</span>
-                              )}
-                            </td>
-                          );
-                        })}
-                        <td className="px-4 py-3 text-center">
-                          <span className="font-semibold text-gray-900">{solved}</span>
-                          <span className="text-gray-400">/{analyticsProblemIds.length}</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-gray-400">{t('topicDetail.analyticsRowHint')}</p>
             </div>
           )}
         </div>
+      )}
+
+      {analyticsUser && (
+        <UserAnalyticsModal
+          topicId={id}
+          userId={analyticsUser.id}
+          userName={analyticsUser.name}
+          userEmail={analyticsUser.email}
+          stats={analyticsUsers[analyticsUser.id]?.problems || {}}
+          topicProblems={problems || []}
+          onClose={() => setAnalyticsUser(null)}
+          t={t}
+        />
       )}
 
       {/* TAB: Translate */}
@@ -1161,5 +1229,145 @@ export default function TopicDetailPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function statusBadgeClass(status: string) {
+  if (status === 'Accepted') return 'bg-green-100 text-green-700';
+  if (status === 'Pending') return 'bg-yellow-100 text-yellow-700';
+  return 'bg-red-100 text-red-700';
+}
+
+function UserAnalyticsModal({
+  topicId, userId, userName, userEmail, stats, topicProblems, onClose, t,
+}: {
+  topicId: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  stats: Record<string, any>;
+  topicProblems: any[];
+  onClose: () => void;
+  t: (k: string) => string;
+}) {
+  const [subs, setSubs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [openSub, setOpenSub] = useState<number | null>(null);
+
+  useEffect(() => {
+    getTopicUserAnalytics(topicId, userId)
+      .then((d) => setSubs(Array.isArray(d) ? d : []))
+      .catch(() => setSubs([]))
+      .finally(() => setLoading(false));
+  }, [topicId, userId]);
+
+  const subsByProblem: Record<number, any[]> = {};
+  subs.forEach((s: any) => {
+    (subsByProblem[s.problem_id] = subsByProblem[s.problem_id] || []).push(s);
+  });
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <div>
+            <h3 className="font-bold text-gray-900">{userName}</h3>
+            <p className="text-xs text-gray-500">{userEmail}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-200 transition">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex-grow overflow-y-auto p-5 space-y-4">
+          {loading ? (
+            <p className="text-center text-gray-400 py-10">{t('topicDetail.loading')}</p>
+          ) : (
+            [...topicProblems]
+              .sort((a: any, b: any) => a.order_num - b.order_num)
+              .map((tp: any, i: number) => {
+                const pid = tp.problem_id;
+                const st = stats[pid];
+                const list = subsByProblem[pid] || [];
+                const title = tp.problem?.title || st?.title || `#${pid}`;
+                return (
+                  <div key={pid} className="border border-gray-200 rounded-xl overflow-hidden">
+                    <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-xs text-gray-400 font-mono shrink-0">#{i + 1}</span>
+                        <Link href={`/problems/${pid}?topic_id=${topicId}`} className="font-medium text-sm text-gray-900 hover:text-blue-600 truncate">
+                          {title}
+                        </Link>
+                      </div>
+                      {st?.solved ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded-full font-medium shrink-0">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                          {t('topicDetail.solved')}
+                        </span>
+                      ) : st ? (
+                        <span className="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded-full font-medium shrink-0">{t('topicDetail.analyticsNotSolved')}</span>
+                      ) : (
+                        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full shrink-0">{t('topicDetail.analyticsNotAttempted')}</span>
+                      )}
+                    </div>
+
+                    {st && (
+                      <div className="px-4 py-2 text-xs text-gray-500 flex flex-wrap gap-x-4 gap-y-1 border-b border-gray-100">
+                        <span>{t('topicDetail.analyticsAttempts')}: <span className="font-medium text-gray-700">{st.attempts}</span></span>
+                        {st.solved_at && (
+                          <span>{t('topicDetail.analyticsSolvedAt')}: <span className="font-medium text-gray-700">{new Date(st.solved_at).toLocaleString()}</span></span>
+                        )}
+                        {st.last_attempt_at && (
+                          <span>{t('topicDetail.analyticsLastAttempt')}: <span className="font-medium text-gray-700">{new Date(st.last_attempt_at).toLocaleString()}</span></span>
+                        )}
+                      </div>
+                    )}
+
+                    {list.length > 0 && (
+                      <div className="divide-y divide-gray-100">
+                        {list.map((s: any) => (
+                          <div key={s.id}>
+                            <div
+                              className="px-4 py-2 flex items-center justify-between gap-3 hover:bg-gray-50 cursor-pointer transition"
+                              onClick={() => setOpenSub(openSub === s.id ? null : s.id)}
+                            >
+                              <span className="text-xs text-gray-500">{new Date(s.created_at).toLocaleString()}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-400">{s.language}</span>
+                                <span className="text-xs text-gray-400 font-mono">{s.execution_time}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${statusBadgeClass(s.status)}`}>{s.status}</span>
+                                <svg className={`h-3.5 w-3.5 text-gray-400 transition-transform ${openSub === s.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </div>
+                            </div>
+                            {openSub === s.id && (
+                              <pre className="mx-4 mb-3 bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto text-xs font-mono whitespace-pre max-h-80 overflow-y-auto">
+                                <code>{s.source_code}</code>
+                              </pre>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function TopicDetailPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-20 text-gray-400">...</div>}>
+      <TopicDetailContent />
+    </Suspense>
   );
 }

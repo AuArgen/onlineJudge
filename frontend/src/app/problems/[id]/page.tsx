@@ -74,6 +74,17 @@ rl.on('close', () => {
 const DEFAULT_CODE = '// Write your code here';
 const ALL_TEMPLATES = new Set([DEFAULT_CODE, ...Object.values(CODE_TEMPLATES)]);
 
+// Mirrors the backend's normalizeOutput: trailing whitespace per line and
+// trailing newlines are ignored when comparing against expected output.
+function normalizeOutput(s: string): string {
+  return s
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/[ \t\r]+$/, ''))
+    .join('\n')
+    .replace(/\n+$/, '');
+}
+
 function OutputBlock({ label, text, truncated, tone, t }: { label: string; text: string; truncated?: boolean; tone: 'neutral' | 'error'; t: (k: string) => string }) {
   const [expanded, setExpanded] = useState(false);
   const isLong = text.length > 400;
@@ -238,6 +249,7 @@ function ProblemDetailContent() {
   const contestId = searchParams.get('contest_id');
   const shareToken = searchParams.get('token');
   const topicToken = searchParams.get('topic_token');
+  const topicId = searchParams.get('topic_id');
   const { showToast } = useToast();
   const router = useRouter();
   const { lang, setLang, t } = useLanguage();
@@ -252,7 +264,10 @@ function ProblemDetailContent() {
   const [cooldown, setCooldown] = useState(0);
   const [user, setUser] = useState<any>(null);
   const [customInput, setCustomInput] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
   const [runResult, setRunResult] = useState<any>(null);
+  const [sampleResults, setSampleResults] = useState<any[] | null>(null);
+  const [expandedSample, setExpandedSample] = useState<number | null>(null);
   const [running, setRunning] = useState(false);
   const [activeOutputTab, setActiveOutputTab] = useState<'run' | 'submit'>('submit');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -347,16 +362,42 @@ function ProblemDetailContent() {
     if (!user) { router.push('/auth/login'); return; }
     setRunning(true);
     setRunResult(null);
+    setSampleResults(null);
     setActiveOutputTab('run');
     const token = localStorage.getItem('token');
+    const samples = (problem?.test_cases || []).slice(0, 10);
+    // Custom stdin (when the panel is open) takes priority; otherwise the
+    // code is tested against the sample cases from the statement — no need
+    // to type anything by hand.
+    const useSamples = !showCustomInput && samples.length > 0;
     try {
       const res = await fetch(`${API_URL}/run`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ language, source_code: code, stdin: customInput })
+        body: JSON.stringify(
+          useSamples
+            ? { language, source_code: code, stdins: samples.map((tc: any) => tc.input) }
+            : { language, source_code: code, stdin: customInput }
+        )
       });
       const data = await res.json();
-      setRunResult(data);
+      if (!res.ok) {
+        showToast(data.error || t('problem.runError'), 'error');
+        return;
+      }
+      if (useSamples && Array.isArray(data.results)) {
+        const checked = data.results.map((r: any, i: number) => {
+          const tc = samples[i];
+          const passed = !r.timed_out && !r.stderr && normalizeOutput(r.stdout || '') === normalizeOutput(tc.expected_output || '');
+          const status = r.timed_out ? 'Time Limit Exceeded' : r.stderr ? 'Runtime Error' : passed ? 'Accepted' : 'Wrong Answer';
+          return { ...r, input: tc.input, expected_output: tc.expected_output, passed, status };
+        });
+        setSampleResults(checked);
+        const firstFailed = checked.findIndex((r: any) => !r.passed);
+        setExpandedSample(firstFailed >= 0 ? firstFailed : null);
+      } else {
+        setRunResult(data);
+      }
     } catch (err) {
       console.error(err);
       showToast(t('problem.runError'), 'error');
@@ -382,6 +423,14 @@ function ProblemDetailContent() {
             {contestId ? (
               <Link href={`/contests/${contestId}`} className="text-sm text-blue-600 hover:underline flex items-center">
                 {t('problem.backToContest')}
+              </Link>
+            ) : topicId ? (
+              <Link href={`/topics/${topicId}?tab=problems`} className="text-sm text-blue-600 hover:underline flex items-center">
+                {t('problem.backToTopic')}
+              </Link>
+            ) : topicToken ? (
+              <Link href={`/topics/shared/${topicToken}`} className="text-sm text-blue-600 hover:underline flex items-center">
+                {t('problem.backToTopic')}
               </Link>
             ) : (
               <Link href="/problems" className="text-sm text-blue-600 hover:underline flex items-center">
@@ -626,22 +675,38 @@ function ProblemDetailContent() {
             </div>
 
             <div className="mt-3 border-t pt-3">
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                {t('problem.stdin')}
-              </label>
-              <textarea
-                value={customInput}
-                onChange={(e) => setCustomInput(e.target.value)}
-                className="w-full border rounded-lg p-2 text-sm font-mono h-20 resize-none focus:ring-2 focus:ring-blue-500 outline-none text-gray-800"
-                placeholder={t('problem.stdinPlaceholder')}
-              />
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setShowCustomInput(!showCustomInput)}
+                  className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase hover:text-gray-700 transition"
+                >
+                  <svg className={`h-3.5 w-3.5 transition-transform ${showCustomInput ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  {t('problem.customInput')}
+                  <span className="font-normal normal-case text-gray-400">({t('problem.optional')})</span>
+                </button>
+              </div>
+              {showCustomInput ? (
+                <textarea
+                  value={customInput}
+                  onChange={(e) => setCustomInput(e.target.value)}
+                  className="mt-2 w-full border rounded-lg p-2 text-sm font-mono h-20 resize-none focus:ring-2 focus:ring-blue-500 outline-none text-gray-800"
+                  placeholder={t('problem.stdinPlaceholder')}
+                  autoFocus
+                />
+              ) : (
+                problem.test_cases && problem.test_cases.length > 0 && (
+                  <p className="mt-1.5 text-xs text-gray-400">{t('problem.runHint')}</p>
+                )
+              )}
             </div>
           </div>
 
-          {(result || runResult) && (
+          {(result || runResult || sampleResults) && (
             <div className="rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="flex border-b bg-gray-50">
-                {runResult && (
+                {(runResult || sampleResults) && (
                   <button
                     onClick={() => setActiveOutputTab('run')}
                     className={`px-4 py-2 text-sm font-medium transition ${activeOutputTab === 'run' ? 'bg-white border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
@@ -659,7 +724,53 @@ function ProblemDetailContent() {
                 )}
               </div>
 
-              {activeOutputTab === 'run' && runResult && (
+              {activeOutputTab === 'run' && sampleResults && (
+                <div className="bg-white">
+                  <div className={`px-4 py-3 border-b flex items-center gap-2 ${sampleResults.every((r) => r.passed) ? 'bg-green-50' : 'bg-red-50'}`}>
+                    <span className={`text-sm font-bold ${sampleResults.every((r) => r.passed) ? 'text-green-700' : 'text-red-700'}`}>
+                      {sampleResults.every((r) => r.passed)
+                        ? t('problem.samplesPassed')
+                        : t('problem.samplesFailed')
+                            .replace('{a}', String(sampleResults.filter((r) => r.passed).length))
+                            .replace('{b}', String(sampleResults.length))}
+                    </span>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {sampleResults.map((sr: any, i: number) => {
+                      const isOpen = expandedSample === i;
+                      return (
+                        <div key={i}>
+                          <div
+                            className="px-4 py-2.5 flex items-center justify-between hover:bg-gray-50 transition cursor-pointer"
+                            onClick={() => setExpandedSample(isOpen ? null : i)}
+                          >
+                            <span className="text-sm font-medium text-gray-700">{t('problem.sampleTest')} #{i + 1}</span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-gray-400 font-mono">{sr.execution_time}</span>
+                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${sr.passed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {sr.passed ? 'OK' : sr.status}
+                              </span>
+                              <svg className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
+                          </div>
+                          {isOpen && (
+                            <div className="px-4 pb-4 space-y-3 bg-gray-50/50">
+                              {sr.input && <OutputBlock label={t('problem.input')} text={sr.input} tone="neutral" t={t} />}
+                              <OutputBlock label={t('problem.expectedOutput')} text={sr.expected_output || ''} tone="neutral" t={t} />
+                              <OutputBlock label={t('problem.actualOutput')} text={sr.stdout || ''} truncated={sr.stdout_truncated} tone={sr.passed ? 'neutral' : 'error'} t={t} />
+                              {sr.stderr && <OutputBlock label={t('problem.errorLabel')} text={sr.stderr} truncated={sr.stderr_truncated} tone="error" t={t} />}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {activeOutputTab === 'run' && !sampleResults && runResult && (
                 <div className="p-4 bg-white">
                   <div className="flex items-center gap-2 mb-3">
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${runResult.timed_out ? 'bg-yellow-100 text-yellow-700' : runResult.stderr ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>

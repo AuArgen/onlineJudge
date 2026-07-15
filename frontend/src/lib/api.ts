@@ -350,3 +350,11 @@ export async function getTopicAnalytics(topicId: number | string) {
   if (!res.ok) throw new Error('Failed to fetch analytics');
   return res.json();
 }
+
+export async function getTopicUserAnalytics(topicId: number | string, userId: number | string) {
+  const res = await fetch(`${getBaseUrl()}/topics/${topicId}/analytics/${userId}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch user analytics');
+  return res.json();
+}
