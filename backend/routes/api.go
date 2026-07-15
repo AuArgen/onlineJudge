@@ -90,6 +90,11 @@ func SetupRoutes(app *fiber.App) {
 	api.Get("/topics/:id/analytics", controllers.GetTopicAnalytics)
 	api.Get("/topics/:id/analytics/:user_id", controllers.GetTopicUserAnalytics)
 
+	// Learn progress (protected)
+	api.Get("/learn/progress", controllers.GetLearnProgress)
+	api.Post("/learn/topics/:id/complete", controllers.CompleteLearnTopic)
+	api.Delete("/learn/topics/:id/complete", controllers.UncompleteLearnTopic)
+
 	// Topic & content translations
 	api.Put("/topics/:id/translations/:lang", controllers.UpsertTopicTranslation)
 	api.Delete("/topics/:id/translations/:lang", controllers.DeleteTopicTranslation)

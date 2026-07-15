@@ -6,19 +6,14 @@ import { getTranslation } from '@/lib/translations';
 import { linkifyText } from '@/lib/linkify';
 import { isLearnLang, learnAlternates, SITE_URL, type LearnLang } from '@/lib/learn';
 import LearnLangSync from '@/components/LearnLangSync';
+import LearnCodeRunner from '@/components/LearnCodeRunner';
+import LearnChildList from '@/components/LearnChildList';
+import LearnProblemList, { type LearnProblemRow } from '@/components/LearnProblemList';
+import LessonCompleteButton from '@/components/LessonCompleteButton';
 
 interface LearnCrumb {
   slug: string;
   title: string;
-}
-
-interface LearnProblem {
-  problem_id: number;
-  title: string;
-  difficulty: string;
-  order_num: number;
-  solved_count: number;
-  user_solved: boolean;
 }
 
 interface LearnTopicResponse {
@@ -33,11 +28,12 @@ interface LearnTopicResponse {
       type: string;
       content: string;
       caption: string;
+      language?: string;
       order_num: number;
     }[] | null;
   };
   children: LearnNode[];
-  problems: LearnProblem[];
+  problems: LearnProblemRow[];
   breadcrumbs: LearnCrumb[];
   prev: LearnCrumb | null;
   next: LearnCrumb | null;
@@ -79,7 +75,13 @@ export async function generateMetadata({ params }: { params: { lang: string; slu
   };
 }
 
-function ContentBlock({ block }: { block: { id: number; type: string; content: string; caption: string } }) {
+function ContentBlock({
+  block,
+  lang,
+}: {
+  block: { id: number; type: string; content: string; caption: string; language?: string };
+  lang: string;
+}) {
   switch (block.type) {
     case 'text':
       return (
@@ -89,6 +91,11 @@ function ContentBlock({ block }: { block: { id: number; type: string; content: s
         </div>
       );
     case 'code':
+      // Code blocks with an explicit language become runnable right in the
+      // lesson; language-less blocks stay a plain static snippet.
+      if (block.language) {
+        return <LearnCodeRunner initialCode={block.content} language={block.language} caption={block.caption} lang={lang} />;
+      }
       return (
         <div>
           <pre className="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto text-sm font-mono whitespace-pre">
@@ -138,12 +145,6 @@ function ContentBlock({ block }: { block: { id: number; type: string; content: s
       return null;
   }
 }
-
-const DIFFICULTY_CLASSES: Record<string, string> = {
-  easy: 'bg-green-50 text-green-700',
-  medium: 'bg-yellow-50 text-yellow-700',
-  hard: 'bg-red-50 text-red-700',
-};
 
 export default async function LearnTopicPage({ params }: { params: { lang: string; slug: string } }) {
   if (!isLearnLang(params.lang)) notFound();
@@ -232,7 +233,7 @@ export default async function LearnTopicPage({ params }: { params: { lang: strin
       {contents.length > 0 && (
         <div className="space-y-6 mb-10">
           {contents.map((block) => (
-            <ContentBlock key={block.id} block={block} />
+            <ContentBlock key={block.id} block={block} lang={lang} />
           ))}
         </div>
       )}
@@ -249,50 +250,7 @@ export default async function LearnTopicPage({ params }: { params: { lang: strin
       {children.length > 0 && (
         <section className="mb-10">
           <h2 className="text-xl font-bold text-gray-900 mb-4">{t('learn.inThisSection')}</h2>
-          <ol className="space-y-2.5">
-            {children.map((child, i) => {
-              const ready = child.has_content || child.problem_count > 0 || child.children.length > 0;
-              const inner = (
-                <>
-                  <div className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center font-semibold text-sm ${ready ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-400'}`}>
-                    {i + 1}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className={`font-medium ${ready ? 'text-gray-900 group-hover:text-blue-600' : 'text-gray-400'} transition`}>
-                      {child.title}
-                    </span>
-                    {child.summary && <p className="text-sm text-gray-500 mt-0.5 leading-relaxed">{child.summary}</p>}
-                    {child.problem_count > 0 && (
-                      <p className="text-xs text-gray-400 mt-1">
-                        {child.problem_count} {t('learn.problemsCount')}
-                      </p>
-                    )}
-                  </div>
-                  {!ready && (
-                    <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500 shrink-0 self-center">
-                      {t('learn.comingSoon')}
-                    </span>
-                  )}
-                </>
-              );
-              return (
-                <li key={child.id}>
-                  {ready ? (
-                    <Link
-                      href={`/learn/${lang}/${child.slug}`}
-                      className="flex items-start gap-3 bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md hover:border-blue-200 transition group"
-                    >
-                      {inner}
-                    </Link>
-                  ) : (
-                    <div className="flex items-start gap-3 bg-white border border-gray-100 rounded-xl p-4 opacity-80">
-                      {inner}
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
+          <LearnChildList items={children} lang={lang} />
         </section>
       )}
 
@@ -300,35 +258,12 @@ export default async function LearnTopicPage({ params }: { params: { lang: strin
       {problems.length > 0 && (
         <section className="mb-10">
           <h2 className="text-xl font-bold text-gray-900 mb-4">{t('learn.practiceProblems')}</h2>
-          <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
-            {problems.map((p, i) => (
-              <Link
-                key={p.problem_id}
-                href={`/problems/${p.problem_id}`}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition group"
-              >
-                <span className="text-sm text-gray-400 w-6 shrink-0">{i + 1}.</span>
-                <span className="font-medium text-gray-900 group-hover:text-blue-600 transition flex-1 min-w-0 truncate">
-                  {p.title}
-                </span>
-                {p.user_solved && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700 shrink-0">
-                    ✓ {t('learn.solvedByYou')}
-                  </span>
-                )}
-                <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${DIFFICULTY_CLASSES[p.difficulty] || 'bg-gray-100 text-gray-600'}`}>
-                  {t(`learn.difficulty.${p.difficulty}`) !== `learn.difficulty.${p.difficulty}`
-                    ? t(`learn.difficulty.${p.difficulty}`)
-                    : p.difficulty}
-                </span>
-                <span className="text-xs text-gray-400 shrink-0 hidden sm:inline">
-                  {p.solved_count} {t('learn.solved')}
-                </span>
-              </Link>
-            ))}
-          </div>
+          <LearnProblemList problems={problems} lang={lang} />
         </section>
       )}
+
+      {/* Lesson completion toggle (leaf lessons with real content only) */}
+      {children.length === 0 && !isEmpty && <LessonCompleteButton topicId={topic.id} lang={lang} />}
 
       {/* Prev / next lesson navigation */}
       {(prev || next) && (

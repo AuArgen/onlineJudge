@@ -430,6 +430,7 @@ func AddContent(c *fiber.Ctx) error {
 		Type     string `json:"type"`
 		Content  string `json:"content"`
 		Caption  string `json:"caption"`
+		Language string `json:"language"`
 		OrderNum int    `json:"order_num"`
 	}
 	var req Request
@@ -440,6 +441,12 @@ func AddContent(c *fiber.Ctx) error {
 	validTypes := map[string]bool{"text": true, "code": true, "image": true, "video": true, "link": true}
 	if !validTypes[req.Type] {
 		return c.Status(400).JSON(fiber.Map{"error": "Type must be one of: text, image, video, link"})
+	}
+
+	if req.Type != "code" {
+		req.Language = ""
+	} else if !validCodeLangs[req.Language] {
+		return c.Status(400).JSON(fiber.Map{"error": "Language must be one of: cpp, python, java, go, javascript (or empty)"})
 	}
 
 	if req.Type == "video" {
@@ -465,11 +472,16 @@ func AddContent(c *fiber.Ctx) error {
 		Type:     req.Type,
 		Content:  req.Content,
 		Caption:  req.Caption,
+		Language: req.Language,
 		OrderNum: req.OrderNum,
 	}
 	database.DB.Create(&block)
 	return c.Status(201).JSON(block)
 }
+
+// validCodeLangs are the code-block languages the in-lesson runner supports
+// (must match the /run endpoint's language switch). Empty means "no runner".
+var validCodeLangs = map[string]bool{"": true, "cpp": true, "python": true, "java": true, "go": true, "javascript": true}
 
 // UpdateContent updates a content block.
 func UpdateContent(c *fiber.Ctx) error {
@@ -492,9 +504,10 @@ func UpdateContent(c *fiber.Ctx) error {
 	}
 
 	type Request struct {
-		Content  string `json:"content"`
-		Caption  string `json:"caption"`
-		OrderNum int    `json:"order_num"`
+		Content  string  `json:"content"`
+		Caption  string  `json:"caption"`
+		Language *string `json:"language"`
+		OrderNum int     `json:"order_num"`
 	}
 	var req Request
 	if err := c.BodyParser(&req); err != nil {
@@ -513,6 +526,12 @@ func UpdateContent(c *fiber.Ctx) error {
 		block.Content = req.Content
 	}
 	block.Caption = req.Caption
+	if req.Language != nil && block.Type == "code" {
+		if !validCodeLangs[*req.Language] {
+			return c.Status(400).JSON(fiber.Map{"error": "Language must be one of: cpp, python, java, go, javascript (or empty)"})
+		}
+		block.Language = *req.Language
+	}
 	if req.OrderNum > 0 {
 		block.OrderNum = req.OrderNum
 	}

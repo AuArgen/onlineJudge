@@ -285,3 +285,69 @@ func GetLearnTopicBySlug(c *fiber.Ctx) error {
 		"next":        next,
 	})
 }
+
+// ---- Progress (authenticated) ----
+
+// GetLearnProgress returns the current user's curriculum progress: which
+// lessons they marked as completed and which problems they have solved.
+// The frontend overlays this on the publicly cached lesson pages.
+func GetLearnProgress(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(float64)
+
+	completedIDs := []uint{}
+	database.DB.Model(&models.TopicProgress{}).
+		Where("user_id = ?", uint(userID)).
+		Pluck("topic_id", &completedIDs)
+
+	solvedIDs := []uint{}
+	database.DB.Model(&models.Submission{}).
+		Where("user_id = ? AND status = 'Accepted'", uint(userID)).
+		Distinct().
+		Pluck("problem_id", &solvedIDs)
+
+	return c.JSON(fiber.Map{
+		"completed_topic_ids": completedIDs,
+		"solved_problem_ids":  solvedIDs,
+	})
+}
+
+// CompleteLearnTopic marks an official curriculum lesson as completed.
+func CompleteLearnTopic(c *fiber.Ctx) error {
+	topicID, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid topic ID"})
+	}
+	userID := c.Locals("user_id").(float64)
+
+	var topic models.Topic
+	if err := database.DB.
+		Where("id = ? AND is_official = ? AND visibility = 'public'", topicID, true).
+		First(&topic).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Topic not found"})
+	}
+
+	progress := models.TopicProgress{UserID: uint(userID), TopicID: topic.ID}
+	if err := database.DB.
+		Where("user_id = ? AND topic_id = ?", uint(userID), topic.ID).
+		First(&progress).Error; err != nil {
+		progress.CompletedAt = time.Now()
+		database.DB.Create(&progress)
+	}
+
+	return c.JSON(progress)
+}
+
+// UncompleteLearnTopic removes the completed mark from a lesson.
+func UncompleteLearnTopic(c *fiber.Ctx) error {
+	topicID, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid topic ID"})
+	}
+	userID := c.Locals("user_id").(float64)
+
+	database.DB.
+		Where("user_id = ? AND topic_id = ?", uint(userID), topicID).
+		Delete(&models.TopicProgress{})
+
+	return c.JSON(fiber.Map{"message": "Progress removed"})
+}

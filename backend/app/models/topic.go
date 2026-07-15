@@ -36,6 +36,9 @@ type TopicContent struct {
 	Type      string    `json:"type"` // text, code, image, video, link
 	Content   string    `json:"content"`
 	Caption   string    `json:"caption"`
+	// Language of a code block (cpp, python, java, go, javascript). When set,
+	// the /learn lesson page renders the block as a runnable code editor.
+	Language  string    `json:"language"`
 	OrderNum  int       `json:"order_num"`
 	CreatedAt time.Time `json:"created_at"`
 

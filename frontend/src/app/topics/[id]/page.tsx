@@ -98,6 +98,7 @@ function TopicDetailContent() {
   const [contentType, setContentType] = useState('text');
   const [contentValue, setContentValue] = useState('');
   const [contentCaption, setContentCaption] = useState('');
+  const [contentLanguage, setContentLanguage] = useState('');
   const [contentError, setContentError] = useState('');
   const [contentLoading, setContentLoading] = useState(false);
 
@@ -183,8 +184,13 @@ function TopicDetailContent() {
     setContentError('');
     setContentLoading(true);
     try {
-      await addTopicContent(id, { type: contentType, content: contentValue.trim(), caption: contentCaption.trim() });
-      setContentValue(''); setContentCaption(''); setShowAddContent(false);
+      await addTopicContent(id, {
+        type: contentType,
+        content: contentValue.trim(),
+        caption: contentCaption.trim(),
+        language: contentType === 'code' ? contentLanguage : undefined,
+      });
+      setContentValue(''); setContentCaption(''); setContentLanguage(''); setShowAddContent(false);
       load();
     } catch (err: any) {
       setContentError(err.message || t('topicForm.error'));
@@ -1136,6 +1142,25 @@ function TopicDetailContent() {
                   />
                 )}
               </div>
+
+              {contentType === 'code' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('topicDetail.codeLanguage')}</label>
+                  <select
+                    value={contentLanguage}
+                    onChange={(e) => setContentLanguage(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="">{t('topicDetail.codeLanguageNone')}</option>
+                    <option value="cpp">C++</option>
+                    <option value="python">Python</option>
+                    <option value="java">Java</option>
+                    <option value="go">Go</option>
+                    <option value="javascript">JavaScript</option>
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">{t('topicDetail.codeLanguageHint')}</p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('topicDetail.contentCaption')}</label>

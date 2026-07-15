@@ -282,6 +282,39 @@ export async function getLearnTopic(slug: string, lang?: string) {
   return res.json();
 }
 
+export interface LearnProgress {
+  completed_topic_ids: number[];
+  solved_problem_ids: number[];
+}
+
+const EMPTY_PROGRESS: LearnProgress = { completed_topic_ids: [], solved_problem_ids: [] };
+
+// Client-side cache so the several progress-aware widgets on one lesson page
+// share a single /learn/progress request. Invalidated on toggle.
+let progressCache: Promise<LearnProgress> | null = null;
+
+export function getLearnProgress(force = false): Promise<LearnProgress> {
+  if (typeof window === 'undefined' || !localStorage.getItem('token')) {
+    return Promise.resolve(EMPTY_PROGRESS);
+  }
+  if (!progressCache || force) {
+    progressCache = fetch(`${getBaseUrl()}/learn/progress`, { headers: getAuthHeaders() })
+      .then((res) => (res.ok ? res.json() : EMPTY_PROGRESS))
+      .catch(() => EMPTY_PROGRESS);
+  }
+  return progressCache;
+}
+
+export async function setLearnTopicCompleted(topicId: number, completed: boolean) {
+  const res = await fetch(`${getBaseUrl()}/learn/topics/${topicId}/complete`, {
+    method: completed ? 'POST' : 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to update progress');
+  progressCache = null;
+  return res.json();
+}
+
 export async function deleteTopic(id: number | string) {
   const res = await fetch(`${getBaseUrl()}/topics/${id}`, {
     method: 'DELETE',
@@ -291,7 +324,7 @@ export async function deleteTopic(id: number | string) {
   return res.json();
 }
 
-export async function addTopicContent(topicId: number | string, data: { type: string; content: string; caption?: string; order_num?: number }) {
+export async function addTopicContent(topicId: number | string, data: { type: string; content: string; caption?: string; language?: string; order_num?: number }) {
   const res = await fetch(`${getBaseUrl()}/topics/${topicId}/contents`, {
     method: 'POST',
     headers: getAuthHeaders(),

@@ -53,6 +53,7 @@ func Connect() {
 		&models.TopicAccess{},
 		&models.TopicTranslation{},
 		&models.TopicContentTranslation{},
+		&models.TopicProgress{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database: ", err)

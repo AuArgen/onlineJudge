@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { API_URL, deleteTopic, getTopics } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/components/ToastProvider';
+import ContinueLearningCard from '@/components/ContinueLearningCard';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -99,6 +100,8 @@ export default function Dashboard() {
           </Link>
         </div>
       </div>
+
+      <ContinueLearningCard />
 
       <div className="flex border-b border-gray-200 mb-6">
         <button

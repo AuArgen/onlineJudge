@@ -630,6 +630,13 @@ const dict: Record<string, Record<LangCode, string>> = {
   'topicDetail.contentLinkUrl': { ru: 'URL ссылки', ky: 'Шилтеме URL', en: 'Link URL' },
   'topicDetail.contentCaption': { ru: 'Подпись (необязательно)', ky: 'Кошумча текст (милдеттүү эмес)', en: 'Caption (optional)' },
   'topicDetail.captionPlaceholder': { ru: 'Краткое описание...', ky: 'Кыска сүрөттөмө...', en: 'Short description...' },
+  'topicDetail.codeLanguage': { ru: 'Язык кода', ky: 'Код тили', en: 'Code language' },
+  'topicDetail.codeLanguageNone': { ru: 'Без запуска (просто показать код)', ky: 'Иштетүүсүз (кодду гана көрсөтүү)', en: 'No runner (just show the code)' },
+  'topicDetail.codeLanguageHint': {
+    ru: 'Если указать язык, в уроке появится кнопка «Запустить» — читатель сможет выполнить и менять код прямо на странице.',
+    ky: 'Тил тандалса, сабакта «Иштетүү» баскычы пайда болот — окурман кодду барактын өзүндө аткарып, өзгөртө алат.',
+    en: 'If a language is set, the lesson shows a "Run" button — readers can execute and edit the code right on the page.',
+  },
   'topicDetail.adding': { ru: 'Добавление...', ky: 'Кошулуп жатат...', en: 'Adding...' },
   'topicDetail.add': { ru: 'Добавить', ky: 'Кошуу', en: 'Add' },
   'topicDetail.cancel': { ru: 'Отмена', ky: 'Жокко чыгаруу', en: 'Cancel' },
@@ -720,6 +727,28 @@ const dict: Record<string, Record<LangCode, string>> = {
   'learn.difficulty.easy': { ru: 'Лёгкая', ky: 'Жеңил', en: 'Easy' },
   'learn.difficulty.medium': { ru: 'Средняя', ky: 'Орто', en: 'Medium' },
   'learn.difficulty.hard': { ru: 'Сложная', ky: 'Татаал', en: 'Hard' },
+
+  // Learn: in-lesson code runner
+  'learn.run': { ru: 'Запустить', ky: 'Иштетүү', en: 'Run' },
+  'learn.running': { ru: 'Выполняется...', ky: 'Аткарылууда...', en: 'Running...' },
+  'learn.reset': { ru: 'Сбросить', ky: 'Баштапкыга кайтаруу', en: 'Reset' },
+  'learn.stdin': { ru: 'Входные данные', ky: 'Киргизүү маалыматтары', en: 'Input' },
+  'learn.output': { ru: 'Вывод', ky: 'Чыгаруу', en: 'Output' },
+  'learn.errors': { ru: 'Ошибки', ky: 'Каталар', en: 'Errors' },
+  'learn.timedOut': { ru: 'Превышен лимит времени', ky: 'Убакыт чегинен ашты', en: 'Time limit exceeded' },
+  'learn.emptyOutput': { ru: '(пустой вывод)', ky: '(бош чыгаруу)', en: '(empty output)' },
+  'learn.loginToRun': { ru: 'Войдите, чтобы запустить код', ky: 'Кодду иштетүү үчүн кириңиз', en: 'Sign in to run code' },
+  'learn.runError': { ru: 'Не удалось выполнить код', ky: 'Кодду аткаруу мүмкүн болгон жок', en: 'Failed to run code' },
+  'learn.tryIt': { ru: 'Попробуйте сами — код можно менять', ky: 'Өзүңүз байкап көрүңүз — кодду өзгөртсө болот', en: 'Try it yourself — the code is editable' },
+
+  // Learn: progress
+  'learn.markComplete': { ru: 'Отметить урок пройденным', ky: 'Сабакты өттүм деп белгилөө', en: 'Mark lesson as completed' },
+  'learn.completed': { ru: 'Урок пройден', ky: 'Сабак өтүлдү', en: 'Lesson completed' },
+  'learn.loginToTrack': { ru: 'Войдите, чтобы отслеживать прогресс', ky: 'Прогрессти көзөмөлдөө үчүн кириңиз', en: 'Sign in to track your progress' },
+  'learn.progressOf': { ru: 'Пройдено {x} из {y}', ky: '{y} ичинен {x} өтүлдү', en: '{x} of {y} completed' },
+  'learn.continueLearning': { ru: 'Продолжить обучение', ky: 'Окууну улантуу', en: 'Continue learning' },
+  'learn.startLearning': { ru: 'Начать обучение', ky: 'Окууну баштоо', en: 'Start learning' },
+  'learn.nextUp': { ru: 'Следующий шаг', ky: 'Кийинки кадам', en: 'Next up' },
 
   // Topic form: curriculum (admin) section
   'topicForm.curriculumSection': { ru: 'Учебная программа и SEO', ky: 'Окуу программасы жана SEO', en: 'Curriculum & SEO' },
