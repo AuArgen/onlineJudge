@@ -86,5 +86,8 @@ func learnLessonContent() map[string]lessonContentSeed {
 	addPythonCourseContent(m)
 	addJavaCourseContent(m)
 	addGoCourseContent(m)
+	addRoadmapLevel12Content(m)
+	addRoadmapLevel34Content(m)
+	addRoadmapLevel56Content(m)
 	return m
 }
