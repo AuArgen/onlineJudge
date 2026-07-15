@@ -265,7 +265,7 @@ func TranslateTopic(c *fiber.Ctx) error {
 	}
 
 	client := ai.NewClient()
-	result, err := client.TranslateTopic(topic.Title, blocks)
+	result, err := client.TranslateTopic(topic.Title, topic.Summary, blocks)
 	if err != nil {
 		return c.Status(502).JSON(fiber.Map{"error": "AI request failed: " + err.Error()})
 	}
@@ -280,12 +280,15 @@ func TranslateTopic(c *fiber.Ctx) error {
 
 			var tt models.TopicTranslation
 			if err := tx.Where("topic_id = ? AND language_code = ?", topic.ID, langCode).First(&tt).Error; err != nil {
-				tt = models.TopicTranslation{TopicID: topic.ID, LanguageCode: langCode, Title: lr.Title}
+				tt = models.TopicTranslation{TopicID: topic.ID, LanguageCode: langCode, Title: lr.Title, Summary: lr.Summary}
 				if err := tx.Create(&tt).Error; err != nil {
 					return err
 				}
 			} else {
 				tt.Title = lr.Title
+				if lr.Summary != "" {
+					tt.Summary = lr.Summary
+				}
 				if err := tx.Save(&tt).Error; err != nil {
 					return err
 				}

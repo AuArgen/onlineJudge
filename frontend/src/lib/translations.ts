@@ -652,6 +652,7 @@ const dict: Record<string, Record<LangCode, string>> = {
   'topicDetail.contentEmpty': { ru: 'Мазмун бош болбосун', ky: 'Мазмун бош болбосун', en: 'Content cannot be empty' },
   'topicDetail.deleteBtn': { ru: 'Удалить', ky: 'Өчүрүү', en: 'Delete' },
   'topicDetail.translateTitleLabel': { ru: 'Название', ky: 'Аталышы', en: 'Title' },
+  'topicDetail.translateSummaryLabel': { ru: 'Краткое описание', ky: 'Кыскача сүрөттөмө', en: 'Summary' },
   'topicDetail.saveTranslation': { ru: 'Сохранить перевод', ky: 'Котормону сактоо', en: 'Save translation' },
   'topicDetail.deleteTranslation': { ru: 'Удалить перевод', ky: 'Котормону өчүрүү', en: 'Delete translation' },
   'topicDetail.confirmDeleteTranslation': { ru: 'Удалить этот перевод?', ky: 'Бул котормону өчүрөсүзбү?', en: 'Delete this translation?' },

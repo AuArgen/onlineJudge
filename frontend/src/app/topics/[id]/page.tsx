@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import {
   getTopic, generateTopicShareToken, shareTopicByEmail, revokeTopicAccess,
-  addTopicContent, deleteTopicContent, addTopicProblem, removeTopicProblem,
+  addTopicContent, deleteTopicContent, updateTopicContent, addTopicProblem, removeTopicProblem,
   createTopic, getTopicAnalytics, getTopicUserAnalytics, getProblems, aiGenerateTopicProblems,
   aiGenerateTopicOverview, upsertTopicTranslation, deleteTopicTranslation,
   upsertTopicContentTranslation, deleteTopicContentTranslation, aiTranslateTopic,
@@ -140,6 +140,7 @@ function TopicDetailContent() {
 
   const [activeTransLang, setActiveTransLang] = useState('ky');
   const [titleTranslation, setTitleTranslation] = useState('');
+  const [summaryTranslation, setSummaryTranslation] = useState('');
   const [contentTranslations, setContentTranslations] = useState<Record<number, { content: string; caption: string }>>({});
   const [translationSaving, setTranslationSaving] = useState<number | 'title' | null>(null);
   const [aiTranslateLoading, setAiTranslateLoading] = useState(false);
@@ -166,6 +167,7 @@ function TopicDetailContent() {
     if (!data?.topic) return;
     const titleTr = data.topic.translations?.find((tr: any) => tr.language_code === activeTransLang);
     setTitleTranslation(titleTr?.title || '');
+    setSummaryTranslation(titleTr?.summary || '');
     const drafts: Record<number, { content: string; caption: string }> = {};
     (data.topic.contents || []).forEach((blk: any) => {
       const tr = blk.translations?.find((t: any) => t.language_code === activeTransLang);
@@ -203,6 +205,17 @@ function TopicDetailContent() {
     if (!confirm(t('topicDetail.confirmDeleteContent'))) return;
     await deleteTopicContent(id, contentId);
     load();
+  };
+
+  // Changes an existing code block's runner language in place. Caption is
+  // re-sent as-is because the update endpoint overwrites it unconditionally.
+  const handleChangeBlockLanguage = async (block: any, language: string) => {
+    try {
+      await updateTopicContent(id, block.id, { caption: block.caption || '', language });
+      load();
+    } catch (err: any) {
+      alert(err.message || t('topicForm.error'));
+    }
   };
 
   const handleAddSubtopic = async (e: React.FormEvent) => {
@@ -313,7 +326,7 @@ function TopicDetailContent() {
     if (!titleTranslation.trim()) return;
     setTranslationSaving('title');
     try {
-      await upsertTopicTranslation(id, activeTransLang, titleTranslation.trim());
+      await upsertTopicTranslation(id, activeTransLang, titleTranslation.trim(), summaryTranslation.trim());
       load();
     } catch (err: any) {
       alert(err.message || t('topicForm.error'));
@@ -514,6 +527,21 @@ function TopicDetailContent() {
                       <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
                         {CONTENT_TYPES.find(ct => ct.key === block.type)?.icon} {CONTENT_TYPES.find(ct => ct.key === block.type)?.label}
                       </span>
+                      {canEdit && block.type === 'code' && (
+                        <select
+                          value={block.language || ''}
+                          onChange={(e) => handleChangeBlockLanguage(block, e.target.value)}
+                          className="ml-auto text-xs border border-gray-200 rounded-md px-1.5 py-1 text-gray-600 bg-white cursor-pointer"
+                          title={t('topicDetail.codeLanguageHint')}
+                        >
+                          <option value="">{t('topicDetail.codeLanguageNone')}</option>
+                          <option value="cpp">C++</option>
+                          <option value="python">Python</option>
+                          <option value="java">Java</option>
+                          <option value="go">Go</option>
+                          <option value="javascript">JavaScript</option>
+                        </select>
+                      )}
                       {canEdit && (
                         <button
                           onClick={() => handleDeleteContent(block.id)}
@@ -1005,6 +1033,16 @@ function TopicDetailContent() {
               value={titleTranslation}
               onChange={(e) => setTitleTranslation(e.target.value)}
               placeholder={topic.title}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <label className="block text-sm font-medium text-gray-700 mb-1.5 mt-4">
+              {t('topicDetail.translateSummaryLabel')} ({TRANSLATION_LANGS.find(l => l.code === activeTransLang)?.label})
+            </label>
+            <textarea
+              value={summaryTranslation}
+              onChange={(e) => setSummaryTranslation(e.target.value)}
+              placeholder={topic.summary || ''}
+              rows={3}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <div className="flex gap-2 mt-2">

@@ -180,11 +180,11 @@ export async function getTopicByToken(token: string, lang?: string) {
   return res.json();
 }
 
-export async function upsertTopicTranslation(topicId: number | string, langCode: string, title: string) {
+export async function upsertTopicTranslation(topicId: number | string, langCode: string, title: string, summary?: string) {
   const res = await fetch(`${getBaseUrl()}/topics/${topicId}/translations/${langCode}`, {
     method: 'PUT',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ title }),
+    body: JSON.stringify({ title, summary: summary ?? '' }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -337,7 +337,7 @@ export async function addTopicContent(topicId: number | string, data: { type: st
   return res.json();
 }
 
-export async function updateTopicContent(topicId: number | string, contentId: number, data: { content?: string; caption?: string; order_num?: number }) {
+export async function updateTopicContent(topicId: number | string, contentId: number, data: { content?: string; caption?: string; language?: string; order_num?: number }) {
   const res = await fetch(`${getBaseUrl()}/topics/${topicId}/contents/${contentId}`, {
     method: 'PUT',
     headers: getAuthHeaders(),

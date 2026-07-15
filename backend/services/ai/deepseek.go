@@ -347,11 +347,12 @@ type TopicBlockTranslation struct {
 	Caption string `json:"caption,omitempty"`
 }
 
-// TopicLangTranslation is a topic's translated title plus, keyed by content
-// block ID (as a string, since JSON object keys must be strings), each
-// block's translated content/caption.
+// TopicLangTranslation is a topic's translated title/summary plus, keyed by
+// content block ID (as a string, since JSON object keys must be strings),
+// each block's translated content/caption.
 type TopicLangTranslation struct {
 	Title    string                            `json:"title"`
+	Summary  string                            `json:"summary,omitempty"`
 	Contents map[string]TopicBlockTranslation  `json:"contents"`
 }
 
@@ -363,31 +364,32 @@ type TopicTranslationResult struct {
 	En TopicLangTranslation `json:"en"`
 }
 
-// TranslateTopic translates a topic's title and its content blocks' natural
-// text into Kyrgyz and English. Code content and media URLs are passed
-// through unchanged by the caller — only captions are translated for those
-// block types.
-func (c *Client) TranslateTopic(title string, blocks []TopicContentInput) (*TopicTranslationResult, error) {
+// TranslateTopic translates a topic's title, its short summary (may be
+// empty), and its content blocks' natural text into Kyrgyz and English. Code
+// content and media URLs are passed through unchanged by the caller — only
+// captions are translated for those block types.
+func (c *Client) TranslateTopic(title, summary string, blocks []TopicContentInput) (*TopicTranslationResult, error) {
 	blocksJSON, err := json.Marshal(blocks)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode content blocks: %w", err)
 	}
 
 	system := `You are a professional translator working for a competitive-programming online judge platform.
-Given a learning topic's title and its content blocks (each with an "id", a "type", and optionally "content" and/or "caption"), translate the title and every provided "content"/"caption" field into Kyrgyz (ky) and English (en).
+Given a learning topic's title, an optional short summary, and its content blocks (each with an "id", a "type", and optionally "content" and/or "caption"), translate the title, the summary, and every provided "content"/"caption" field into Kyrgyz (ky) and English (en).
 Rules:
 - Preserve meaning and tone faithfully; keep any Markdown formatting, backticked code spans, and numbers/units intact.
 - Never translate or alter block "content" for blocks whose type is "image", "video" or "link" — only translate their "caption" if present. (Such blocks are given to you without a "content" field; do not invent one.)
 - For "text" and "code" block types, translate "content" fully; for "code" blocks specifically, only translate/paraphrase comments or prose inside the content and leave actual code syntax untouched — if you are unsure, leave "content" as-is.
 - If a block has no "caption" in the input, omit "caption" from your output for that block. If a block has no "content" in the input, omit "content" from your output for that block.
+- If the summary input is empty, omit "summary" from your output.
 Respond with STRICT JSON only, matching exactly this shape:
 {
-  "ky": {"title": "...", "contents": {"<block id>": {"content": "...", "caption": "..."}}},
-  "en": {"title": "...", "contents": {"<block id>": {"content": "...", "caption": "..."}}}
+  "ky": {"title": "...", "summary": "...", "contents": {"<block id>": {"content": "...", "caption": "..."}}},
+  "en": {"title": "...", "summary": "...", "contents": {"<block id>": {"content": "...", "caption": "..."}}}
 }
 Do not include any text outside the JSON object.`
 
-	user := fmt.Sprintf("Title: %s\nContent blocks (JSON array): %s", title, string(blocksJSON))
+	user := fmt.Sprintf("Title: %s\nSummary: %s\nContent blocks (JSON array): %s", title, summary, string(blocksJSON))
 
 	raw, err := c.chatCompletion(system, user)
 	if err != nil {

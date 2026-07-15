@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { API_URL } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { learnHref } from '@/lib/learn';
 
 export default function Home() {
   const [problems, setProblems] = useState<any[]>([]);
@@ -32,7 +33,10 @@ export default function Home() {
             <p className="mt-4 text-lg text-gray-500 mb-8 max-w-lg">
               {t('home.heroDesc')}
             </p>
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
+              <Link href={learnHref(lang)} className="flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 transition shadow-lg shadow-green-200">
+                {t('learn.startLearning')}
+              </Link>
               <Link href="/problems" className="flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition shadow-lg shadow-blue-200">
                 {t('home.startSolving')}
               </Link>
