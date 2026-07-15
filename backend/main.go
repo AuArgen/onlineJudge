@@ -30,6 +30,9 @@ func main() {
 	// Seed database (if empty)
 	database.Seed()
 
+	// Seed the official /learn curriculum skeleton (if missing)
+	database.SeedLearn()
+
 	// Initialize Fiber app
 	app := fiber.New()
 

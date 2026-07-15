@@ -12,6 +12,15 @@ type Topic struct {
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 
+	// Curriculum (/learn) fields. Official topics form the public learning
+	// section: they are curated by admins, addressable by slug, and served
+	// without authentication. Uniqueness of non-empty slugs is enforced in
+	// code (a DB unique index would collide on the empty string default).
+	Slug       string `gorm:"index" json:"slug"`
+	Summary    string `json:"summary"`
+	OrderNum   int    `gorm:"default:0" json:"order_num"`
+	IsOfficial bool   `gorm:"default:false" json:"is_official"`
+
 	Author       User                `gorm:"foreignKey:AuthorID" json:"author,omitempty"`
 	Children     []Topic             `gorm:"foreignKey:ParentID" json:"children,omitempty"`
 	Contents     []TopicContent      `gorm:"foreignKey:TopicID;constraint:OnDelete:CASCADE" json:"contents,omitempty"`

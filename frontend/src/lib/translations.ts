@@ -651,6 +651,97 @@ const dict: Record<string, Record<LangCode, string>> = {
   'topicDetail.aiTranslateBtn': { ru: '✨ Перевести с ИИ', ky: '✨ ЖИ менен которуу', en: '✨ Translate with AI' },
   'topicDetail.aiTranslating': { ru: 'ИИ переводит...', ky: 'ЖИ которууда...', en: 'AI is translating...' },
   'topicDetail.aiTranslateError': { ru: 'Ошибка ИИ. Проверьте ключ DeepSeek на сервере.', ky: 'ЖИ катасы. Сервердеги DeepSeek ачкычын текшериңиз.', en: 'AI error. Check the DeepSeek key on the server.' },
+
+  // Learn (public curriculum)
+  'nav.learn': { ru: 'Обучение', ky: 'Окуу', en: 'Learn' },
+  'learn.metaTitle': {
+    ru: 'Обучение программированию — от нуля до олимпиад',
+    ky: 'Программалоону үйрөнүү — нөлдөн олимпиадага чейин',
+    en: 'Learn Programming — from Zero to Olympiads',
+  },
+  'learn.metaDescription': {
+    ru: 'Бесплатные уроки по C++, Python, Java и Go с нуля и пошаговый путь подготовки к олимпиадам по программированию: теория, примеры кода и задачи с автоматической проверкой.',
+    ky: 'C++, Python, Java жана Go боюнча нөлдөн баштап акысыз сабактар жана программалоо олимпиадаларына даярдануунун этап-этап жолу: теория, код мисалдары жана автоматтык текшерүү менен маселелер.',
+    en: 'Free C++, Python, Java, and Go lessons from scratch and a step-by-step competitive programming path: theory, code examples, and auto-checked practice problems.',
+  },
+  'learn.title': { ru: 'Обучение', ky: 'Окуу', en: 'Learn' },
+  'learn.intro': {
+    ru: 'Изучайте программирование с нуля и готовьтесь к олимпиадам: уроки с теорией и примерами кода, задачи с автоматической проверкой и понятный путь от первого «Hello, World» до продвинутых алгоритмов.',
+    ky: 'Программалоону нөлдөн үйрөнүп, олимпиадаларга даярданыңыз: теория жана код мисалдары бар сабактар, автоматтык текшерүү менен маселелер жана биринчи «Hello, World»дан татаал алгоритмдерге чейинки түшүнүктүү жол.',
+    en: 'Learn programming from scratch and prepare for olympiads: lessons with theory and code examples, auto-checked practice problems, and a clear path from your first "Hello, World" to advanced algorithms.',
+  },
+  'learn.howTitle': { ru: 'Как пользоваться сайтом', ky: 'Сайтты кантип колдонуу керек', en: 'How to use this site' },
+  'learn.how1Title': { ru: 'Войдите через Google', ky: 'Google аркылуу кириңиз', en: 'Sign in with Google' },
+  'learn.how1Desc': {
+    ru: 'Один клик — и ваш прогресс, решения и история попыток сохраняются автоматически.',
+    ky: 'Бир чыкылдатуу — прогрессиңиз, чечимдериңиз жана аракеттер тарыхыңыз автоматтык сакталат.',
+    en: 'One click — and your progress, solutions, and attempt history are saved automatically.',
+  },
+  'learn.how2Title': { ru: 'Выберите свой путь', ky: 'Өз жолуңузду тандаңыз', en: 'Choose your path' },
+  'learn.how2Desc': {
+    ru: 'Новичок? Начните с курса языка программирования. Уже пишете код? Начинайте путь олимпиадника с первого уровня.',
+    ky: 'Жаңы баштадыңызбы? Программалоо тилинин курсунан баштаңыз. Код жаза аласызбы? Олимпиадачынын жолун биринчи деңгээлден баштаңыз.',
+    en: 'A beginner? Start with a language course. Already write code? Start the competitive programming path at level one.',
+  },
+  'learn.how3Title': { ru: 'Решайте задачи с автопроверкой', ky: 'Автотекшерүү менен маселе чечиңиз', en: 'Solve auto-checked problems' },
+  'learn.how3Desc': {
+    ru: 'К урокам прилагаются задачи. Отправьте решение — система проверит его на тестах за секунды.',
+    ky: 'Сабактарга маселелер тиркелген. Чечимиңизди жөнөтүңүз — система аны тесттерде секунданын ичинде текшерет.',
+    en: 'Lessons come with practice problems. Submit a solution — the judge checks it against tests in seconds.',
+  },
+  'learn.how4Title': { ru: 'Соревнуйтесь и растите', ky: 'Мелдешиңиз жана өсүңүз', en: 'Compete and grow' },
+  'learn.how4Desc': {
+    ru: 'Участвуйте в соревнованиях, следите за рейтингом и переходите на следующий уровень.',
+    ky: 'Мелдештерге катышыңыз, рейтингди көзөмөлдөңүз жана кийинки деңгээлге өтүңүз.',
+    en: 'Join contests, track your leaderboard position, and move up to the next level.',
+  },
+  'learn.coursesTitle': { ru: 'Курсы по языкам программирования', ky: 'Программалоо тилдеринин курстары', en: 'Programming language courses' },
+  'learn.coursesSubtitle': {
+    ru: 'Освойте язык с нуля до уровня, с которого можно начинать олимпиадный путь.',
+    ky: 'Тилди нөлдөн баштап олимпиадалык жолго чыгууга жеткидей деңгээлге чейин үйрөнүңүз.',
+    en: 'Master a language from scratch up to the level where the olympiad path begins.',
+  },
+  'learn.lessonsCount': { ru: 'уроков', ky: 'сабак', en: 'lessons' },
+  'learn.problemsCount': { ru: 'задач', ky: 'маселе', en: 'problems' },
+  'learn.levelsCount': { ru: 'уровней', ky: 'деңгээл', en: 'levels' },
+  'learn.comingSoon': { ru: 'Скоро', ky: 'Жакында', en: 'Coming soon' },
+  'learn.open': { ru: 'Открыть', ky: 'Ачуу', en: 'Open' },
+  'learn.inThisSection': { ru: 'В этом разделе', ky: 'Бул бөлүмдө', en: 'In this section' },
+  'learn.practiceProblems': { ru: 'Задачи для практики', ky: 'Практика үчүн маселелер', en: 'Practice problems' },
+  'learn.solved': { ru: 'решили', ky: 'чечти', en: 'solved' },
+  'learn.solvedByYou': { ru: 'Решено', ky: 'Чечилди', en: 'Solved' },
+  'learn.prevLesson': { ru: 'Предыдущий урок', ky: 'Мурунку сабак', en: 'Previous lesson' },
+  'learn.nextLesson': { ru: 'Следующий урок', ky: 'Кийинки сабак', en: 'Next lesson' },
+  'learn.emptyLesson': {
+    ru: 'Материал этого урока готовится. Загляните позже — скоро здесь появятся теория, примеры кода и задачи.',
+    ky: 'Бул сабактын материалы даярдалууда. Кийинчерээк кайрылыңыз — жакында бул жерде теория, код мисалдары жана маселелер пайда болот.',
+    en: 'This lesson is being prepared. Check back soon — theory, code examples, and problems are on the way.',
+  },
+  'learn.difficulty.easy': { ru: 'Лёгкая', ky: 'Жеңил', en: 'Easy' },
+  'learn.difficulty.medium': { ru: 'Средняя', ky: 'Орто', en: 'Medium' },
+  'learn.difficulty.hard': { ru: 'Сложная', ky: 'Татаал', en: 'Hard' },
+
+  // Topic form: curriculum (admin) section
+  'topicForm.curriculumSection': { ru: 'Учебная программа и SEO', ky: 'Окуу программасы жана SEO', en: 'Curriculum & SEO' },
+  'topicForm.slug': { ru: 'Slug (адрес страницы)', ky: 'Slug (барактын дареги)', en: 'Slug (page address)' },
+  'topicForm.slugHint': {
+    ru: 'Только строчные латинские буквы, цифры и дефисы. Пример: binary-search',
+    ky: 'Кичине латын тамгалары, сандар жана дефистер гана. Мисалы: binary-search',
+    en: 'Lowercase latin letters, digits and hyphens only. Example: binary-search',
+  },
+  'topicForm.summary': { ru: 'Краткое описание', ky: 'Кыскача сүрөттөмө', en: 'Summary' },
+  'topicForm.summaryHint': {
+    ru: 'Показывается в списках и в описании страницы для поисковиков (1–2 предложения).',
+    ky: 'Тизмелерде жана издөө системалары үчүн барактын сүрөттөмөсүндө көрсөтүлөт (1–2 сүйлөм).',
+    en: 'Shown in lists and as the page description for search engines (1–2 sentences).',
+  },
+  'topicForm.orderNum': { ru: 'Порядковый номер', ky: 'Иреттик номери', en: 'Order number' },
+  'topicForm.isOfficial': { ru: 'Официальная тема (раздел «Обучение»)', ky: 'Расмий тема («Окуу» бөлүмү)', en: 'Official topic (Learn section)' },
+  'topicForm.isOfficialDesc': {
+    ru: 'Официальные публичные темы показываются в открытом разделе /learn и индексируются поисковиками.',
+    ky: 'Расмий жалпы темалар ачык /learn бөлүмүндө көрсөтүлүп, издөө системалары тарабынан индекстелет.',
+    en: 'Official public topics appear in the public /learn section and are indexed by search engines.',
+  },
 };
 
 export function getTranslation(lang: string, key: string): string {

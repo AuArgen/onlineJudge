@@ -1,13 +1,14 @@
 package models
 
-// TopicTranslation holds a translated title for a topic. The topic's own
-// Title field is the base language (Russian, by convention); rows here only
-// exist for the other supported languages (ky, en).
+// TopicTranslation holds a translated title/summary for a topic. The topic's
+// own Title/Summary fields are the base language (Russian, by convention);
+// rows here only exist for the other supported languages (ky, en).
 type TopicTranslation struct {
 	ID           uint   `json:"id" gorm:"primaryKey;autoIncrement"`
 	TopicID      uint   `json:"topic_id" gorm:"not null;uniqueIndex:idx_topic_lang"`
 	LanguageCode string `json:"language_code" gorm:"not null;size:10;uniqueIndex:idx_topic_lang"`
 	Title        string `json:"title"`
+	Summary      string `json:"summary"`
 }
 
 // TopicContentTranslation holds a translated content/caption pair for a

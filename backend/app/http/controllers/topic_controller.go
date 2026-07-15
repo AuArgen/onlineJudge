@@ -221,7 +221,12 @@ func applyTopicTranslation(topic *models.Topic, lang string) {
 	}
 	for _, tr := range topic.Translations {
 		if tr.LanguageCode == lang {
-			topic.Title = tr.Title
+			if tr.Title != "" {
+				topic.Title = tr.Title
+			}
+			if tr.Summary != "" {
+				topic.Summary = tr.Summary
+			}
 			break
 		}
 	}
@@ -236,7 +241,11 @@ func applyTopicTranslation(topic *models.Topic, lang string) {
 	}
 }
 
-// UpdateTopic updates title and/or visibility of a topic.
+// slugPattern validates curriculum slugs: lowercase latin, digits, hyphens.
+var slugPattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+
+// UpdateTopic updates title, visibility, and (for the /learn curriculum)
+// slug/summary/order. Marking a topic official is admin-only.
 func UpdateTopic(c *fiber.Ctx) error {
 	id := c.Params("id")
 	userID := c.Locals("user_id").(float64)
@@ -251,8 +260,12 @@ func UpdateTopic(c *fiber.Ctx) error {
 	}
 
 	type Request struct {
-		Title      string `json:"title"`
-		Visibility string `json:"visibility"`
+		Title      string  `json:"title"`
+		Visibility string  `json:"visibility"`
+		Slug       *string `json:"slug"`
+		Summary    *string `json:"summary"`
+		OrderNum   *int    `json:"order_num"`
+		IsOfficial *bool   `json:"is_official"`
 	}
 	var req Request
 	if err := c.BodyParser(&req); err != nil {
@@ -263,6 +276,32 @@ func UpdateTopic(c *fiber.Ctx) error {
 	}
 	if req.Visibility == "public" || req.Visibility == "private" {
 		topic.Visibility = req.Visibility
+	}
+	if req.Summary != nil {
+		topic.Summary = strings.TrimSpace(*req.Summary)
+	}
+	if req.OrderNum != nil {
+		topic.OrderNum = *req.OrderNum
+	}
+	if req.Slug != nil {
+		slug := strings.ToLower(strings.TrimSpace(*req.Slug))
+		if slug != "" {
+			if !slugPattern.MatchString(slug) {
+				return c.Status(400).JSON(fiber.Map{"error": "Slug may contain only lowercase latin letters, digits and hyphens"})
+			}
+			var count int64
+			database.DB.Model(&models.Topic{}).Where("slug = ? AND id != ?", slug, topic.ID).Count(&count)
+			if count > 0 {
+				return c.Status(400).JSON(fiber.Map{"error": "Slug is already in use"})
+			}
+		}
+		topic.Slug = slug
+	}
+	if req.IsOfficial != nil {
+		if role != "admin" {
+			return c.Status(403).JSON(fiber.Map{"error": "Only admins can change the official flag"})
+		}
+		topic.IsOfficial = *req.IsOfficial
 	}
 
 	database.DB.Save(&topic)
@@ -296,7 +335,8 @@ func UpsertTopicTranslation(c *fiber.Ctx) error {
 	}
 
 	type Request struct {
-		Title string `json:"title"`
+		Title   string `json:"title"`
+		Summary string `json:"summary"`
 	}
 	var req Request
 	if err := c.BodyParser(&req); err != nil || strings.TrimSpace(req.Title) == "" {
@@ -306,10 +346,11 @@ func UpsertTopicTranslation(c *fiber.Ctx) error {
 	var translation models.TopicTranslation
 	err = database.DB.Where("topic_id = ? AND language_code = ?", topic.ID, langCode).First(&translation).Error
 	if err != nil {
-		translation = models.TopicTranslation{TopicID: topic.ID, LanguageCode: langCode, Title: strings.TrimSpace(req.Title)}
+		translation = models.TopicTranslation{TopicID: topic.ID, LanguageCode: langCode, Title: strings.TrimSpace(req.Title), Summary: strings.TrimSpace(req.Summary)}
 		database.DB.Create(&translation)
 	} else {
 		translation.Title = strings.TrimSpace(req.Title)
+		translation.Summary = strings.TrimSpace(req.Summary)
 		database.DB.Save(&translation)
 	}
 

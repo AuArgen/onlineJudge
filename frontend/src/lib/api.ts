@@ -236,13 +236,49 @@ export async function aiTranslateTopic(topicId: number | string) {
   return res.json();
 }
 
-export async function updateTopic(id: number | string, data: { title?: string; visibility?: string }) {
+export async function updateTopic(
+  id: number | string,
+  data: { title?: string; visibility?: string; slug?: string; summary?: string; order_num?: number; is_official?: boolean }
+) {
   const res = await fetch(`${getBaseUrl()}/topics/${id}`, {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Failed to update topic');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to update topic');
+  }
+  return res.json();
+}
+
+// ---- Learn (public curriculum) ----
+
+export interface LearnNode {
+  id: number;
+  slug: string;
+  title: string;
+  summary: string;
+  order_num: number;
+  has_content: boolean;
+  problem_count: number;
+  updated_at: string;
+  children: LearnNode[];
+}
+
+export async function getLearnTracks(lang?: string): Promise<LearnNode[]> {
+  const url = new URL(`${getBaseUrl()}/learn/tracks`);
+  if (lang) url.searchParams.set('lang', lang);
+  const res = await fetch(url.toString(), { next: { revalidate: 300 } });
+  if (!res.ok) throw new Error('Failed to fetch learn tracks');
+  return res.json();
+}
+
+export async function getLearnTopic(slug: string, lang?: string) {
+  const url = new URL(`${getBaseUrl()}/learn/topics/${slug}`);
+  if (lang) url.searchParams.set('lang', lang);
+  const res = await fetch(url.toString(), { next: { revalidate: 300 } });
+  if (!res.ok) return null;
   return res.json();
 }
 

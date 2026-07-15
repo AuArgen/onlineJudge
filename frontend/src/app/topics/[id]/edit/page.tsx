@@ -4,24 +4,36 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getTopic, updateTopic } from '@/lib/api';
+import { useAuth } from '@/components/AuthProvider';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function EditTopicPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
   const { t } = useLanguage();
 
   const [title, setTitle] = useState('');
   const [visibility, setVisibility] = useState<'private' | 'public'>('private');
+  const [slug, setSlug] = useState('');
+  const [summary, setSummary] = useState('');
+  const [orderNum, setOrderNum] = useState(0);
+  const [isOfficial, setIsOfficial] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     getTopic(id)
       .then((d) => {
         setTitle(d.topic.title);
         setVisibility(d.topic.visibility);
+        setSlug(d.topic.slug || '');
+        setSummary(d.topic.summary || '');
+        setOrderNum(d.topic.order_num || 0);
+        setIsOfficial(!!d.topic.is_official);
       })
       .catch(() => setError(t('topicForm.notFound')))
       .finally(() => setLoading(false));
@@ -33,7 +45,15 @@ export default function EditTopicPage() {
     setSaving(true);
     setError('');
     try {
-      await updateTopic(id, { title: title.trim(), visibility });
+      const payload: Parameters<typeof updateTopic>[1] = {
+        title: title.trim(),
+        visibility,
+        slug: slug.trim(),
+        summary: summary.trim(),
+        order_num: orderNum,
+      };
+      if (isAdmin) payload.is_official = isOfficial;
+      await updateTopic(id, payload);
       router.push(`/topics/${id}`);
     } catch (err: any) {
       setError(err.message || t('topicForm.error'));
@@ -97,6 +117,59 @@ export default function EditTopicPage() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Curriculum & SEO fields for the public /learn section */}
+        <div className="border-t border-gray-100 pt-5 space-y-4">
+          <h2 className="text-sm font-semibold text-gray-900">{t('topicForm.curriculumSection')}</h2>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('topicForm.slug')}</label>
+            <input
+              type="text"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value.toLowerCase())}
+              placeholder="binary-search"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">{t('topicForm.slugHint')}</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('topicForm.summary')}</label>
+            <textarea
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              rows={3}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">{t('topicForm.summaryHint')}</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('topicForm.orderNum')}</label>
+            <input
+              type="number"
+              value={orderNum}
+              onChange={(e) => setOrderNum(parseInt(e.target.value, 10) || 0)}
+              className="w-32 border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {isAdmin && (
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isOfficial}
+                onChange={(e) => setIsOfficial(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span>
+                <span className="block text-sm font-medium text-gray-700">{t('topicForm.isOfficial')}</span>
+                <span className="block text-xs text-gray-400 mt-0.5">{t('topicForm.isOfficialDesc')}</span>
+              </span>
+            </label>
+          )}
         </div>
 
         {error && (

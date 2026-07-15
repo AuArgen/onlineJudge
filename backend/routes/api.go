@@ -27,6 +27,10 @@ func SetupRoutes(app *fiber.App) {
 	// Topics (Public) - shared token access (no auth required)
 	api.Get("/topics/shared/:token", controllers.GetTopicByToken)
 
+	// Learn (Public) - official curriculum, crawlable without auth
+	api.Get("/learn/tracks", controllers.GetLearnTracks)
+	api.Get("/learn/topics/:slug", controllers.GetLearnTopicBySlug)
+
 	// Protected Routes
 	api.Use(middleware.AuthRequired)
 	api.Post("/problems", controllers.CreateProblem)

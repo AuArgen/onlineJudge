@@ -2,16 +2,35 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { useLanguage, LANGUAGES } from '@/contexts/LanguageContext';
+
+const LEARN_LANG_CODES = ['ru', 'ky', 'en'];
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const { lang, setLang, t } = useLanguage();
 
   const isActive = (path: string) => pathname === path;
+
+  // Learn pages carry the language in the URL (/learn/<lang>/...), so the
+  // global language switcher must also navigate there — otherwise the page
+  // content would stay in the old language.
+  const handleLangChange = (newLang: string) => {
+    setLang(newLang);
+    if (pathname.startsWith('/learn')) {
+      const parts = pathname.split('/');
+      if (parts.length >= 3 && LEARN_LANG_CODES.includes(parts[2])) {
+        parts[2] = newLang;
+        router.push(parts.join('/'));
+      } else {
+        router.push(`/learn/${newLang}`);
+      }
+    }
+  };
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
@@ -35,6 +54,16 @@ export default function Navbar() {
             </Link>
 
             <div className="hidden md:flex items-center gap-1">
+              <Link
+                href={`/learn/${LEARN_LANG_CODES.includes(lang) ? lang : 'ru'}`}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  pathname.startsWith('/learn')
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                {t('nav.learn')}
+              </Link>
               <Link
                 href="/problems"
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -82,7 +111,7 @@ export default function Navbar() {
           <div className="flex items-center">
             <select
               value={lang}
-              onChange={e => setLang(e.target.value)}
+              onChange={e => handleLangChange(e.target.value)}
               className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
               {LANGUAGES.map(l => (
