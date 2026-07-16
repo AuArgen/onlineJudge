@@ -36,6 +36,9 @@ func main() {
 	// Fill empty curriculum lessons with seeded content
 	database.SeedLearnContent()
 
+	// Seed ky/en translations for the curriculum content
+	database.SeedLearnContentTranslations()
+
 	// Initialize Fiber app
 	app := fiber.New()
 
