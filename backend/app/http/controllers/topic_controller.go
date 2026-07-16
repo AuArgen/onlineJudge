@@ -427,11 +427,12 @@ func AddContent(c *fiber.Ctx) error {
 	}
 
 	type Request struct {
-		Type     string `json:"type"`
-		Content  string `json:"content"`
-		Caption  string `json:"caption"`
-		Language string `json:"language"`
-		OrderNum int    `json:"order_num"`
+		Type        string `json:"type"`
+		Content     string `json:"content"`
+		Caption     string `json:"caption"`
+		Language    string `json:"language"`
+		SampleInput string `json:"sample_input"`
+		OrderNum    int    `json:"order_num"`
 	}
 	var req Request
 	if err := c.BodyParser(&req); err != nil {
@@ -445,6 +446,7 @@ func AddContent(c *fiber.Ctx) error {
 
 	if req.Type != "code" {
 		req.Language = ""
+		req.SampleInput = ""
 	} else if !validCodeLangs[req.Language] {
 		return c.Status(400).JSON(fiber.Map{"error": "Language must be one of: cpp, python, java, go, javascript (or empty)"})
 	}
@@ -468,12 +470,13 @@ func AddContent(c *fiber.Ctx) error {
 	}
 
 	block := models.TopicContent{
-		TopicID:  uint(topicID),
-		Type:     req.Type,
-		Content:  req.Content,
-		Caption:  req.Caption,
-		Language: req.Language,
-		OrderNum: req.OrderNum,
+		TopicID:     uint(topicID),
+		Type:        req.Type,
+		Content:     req.Content,
+		Caption:     req.Caption,
+		Language:    req.Language,
+		SampleInput: req.SampleInput,
+		OrderNum:    req.OrderNum,
 	}
 	database.DB.Create(&block)
 	return c.Status(201).JSON(block)
@@ -504,10 +507,11 @@ func UpdateContent(c *fiber.Ctx) error {
 	}
 
 	type Request struct {
-		Content  string  `json:"content"`
-		Caption  string  `json:"caption"`
-		Language *string `json:"language"`
-		OrderNum int     `json:"order_num"`
+		Content     string  `json:"content"`
+		Caption     string  `json:"caption"`
+		Language    *string `json:"language"`
+		SampleInput *string `json:"sample_input"`
+		OrderNum    int     `json:"order_num"`
 	}
 	var req Request
 	if err := c.BodyParser(&req); err != nil {
@@ -531,6 +535,9 @@ func UpdateContent(c *fiber.Ctx) error {
 			return c.Status(400).JSON(fiber.Map{"error": "Language must be one of: cpp, python, java, go, javascript (or empty)"})
 		}
 		block.Language = *req.Language
+	}
+	if req.SampleInput != nil && block.Type == "code" {
+		block.SampleInput = *req.SampleInput
 	}
 	if req.OrderNum > 0 {
 		block.OrderNum = req.OrderNum

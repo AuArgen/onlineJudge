@@ -29,6 +29,7 @@ interface LearnTopicResponse {
       content: string;
       caption: string;
       language?: string;
+      sample_input?: string;
       order_num: number;
     }[] | null;
   };
@@ -79,7 +80,7 @@ function ContentBlock({
   block,
   lang,
 }: {
-  block: { id: number; type: string; content: string; caption: string; language?: string };
+  block: { id: number; type: string; content: string; caption: string; language?: string; sample_input?: string };
   lang: string;
 }) {
   switch (block.type) {
@@ -94,7 +95,15 @@ function ContentBlock({
       // Code blocks with an explicit language become runnable right in the
       // lesson; language-less blocks stay a plain static snippet.
       if (block.language) {
-        return <LearnCodeRunner initialCode={block.content} language={block.language} caption={block.caption} lang={lang} />;
+        return (
+          <LearnCodeRunner
+            initialCode={block.content}
+            language={block.language}
+            caption={block.caption}
+            lang={lang}
+            sampleInput={block.sample_input || ''}
+          />
+        );
       }
       return (
         <div>

@@ -324,7 +324,7 @@ export async function deleteTopic(id: number | string) {
   return res.json();
 }
 
-export async function addTopicContent(topicId: number | string, data: { type: string; content: string; caption?: string; language?: string; order_num?: number }) {
+export async function addTopicContent(topicId: number | string, data: { type: string; content: string; caption?: string; language?: string; sample_input?: string; order_num?: number }) {
   const res = await fetch(`${getBaseUrl()}/topics/${topicId}/contents`, {
     method: 'POST',
     headers: getAuthHeaders(),
@@ -337,7 +337,7 @@ export async function addTopicContent(topicId: number | string, data: { type: st
   return res.json();
 }
 
-export async function updateTopicContent(topicId: number | string, contentId: number, data: { content?: string; caption?: string; language?: string; order_num?: number }) {
+export async function updateTopicContent(topicId: number | string, contentId: number, data: { content?: string; caption?: string; language?: string; sample_input?: string; order_num?: number }) {
   const res = await fetch(`${getBaseUrl()}/topics/${topicId}/contents/${contentId}`, {
     method: 'PUT',
     headers: getAuthHeaders(),

@@ -99,6 +99,9 @@ function TopicDetailContent() {
   const [contentValue, setContentValue] = useState('');
   const [contentCaption, setContentCaption] = useState('');
   const [contentLanguage, setContentLanguage] = useState('');
+  const [contentSampleInput, setContentSampleInput] = useState('');
+  const [sampleEditId, setSampleEditId] = useState<number | null>(null);
+  const [sampleDraft, setSampleDraft] = useState('');
   const [contentError, setContentError] = useState('');
   const [contentLoading, setContentLoading] = useState(false);
 
@@ -191,8 +194,9 @@ function TopicDetailContent() {
         content: contentValue.trim(),
         caption: contentCaption.trim(),
         language: contentType === 'code' ? contentLanguage : undefined,
+        sample_input: contentType === 'code' ? contentSampleInput : undefined,
       });
-      setContentValue(''); setContentCaption(''); setContentLanguage(''); setShowAddContent(false);
+      setContentValue(''); setContentCaption(''); setContentLanguage(''); setContentSampleInput(''); setShowAddContent(false);
       load();
     } catch (err: any) {
       setContentError(err.message || t('topicForm.error'));
@@ -212,6 +216,16 @@ function TopicDetailContent() {
   const handleChangeBlockLanguage = async (block: any, language: string) => {
     try {
       await updateTopicContent(id, block.id, { caption: block.caption || '', language });
+      load();
+    } catch (err: any) {
+      alert(err.message || t('topicForm.error'));
+    }
+  };
+
+  const handleSaveSampleInput = async (block: any) => {
+    try {
+      await updateTopicContent(id, block.id, { caption: block.caption || '', sample_input: sampleDraft });
+      setSampleEditId(null);
       load();
     } catch (err: any) {
       alert(err.message || t('topicForm.error'));
@@ -528,19 +542,38 @@ function TopicDetailContent() {
                         {CONTENT_TYPES.find(ct => ct.key === block.type)?.icon} {CONTENT_TYPES.find(ct => ct.key === block.type)?.label}
                       </span>
                       {canEdit && block.type === 'code' && (
-                        <select
-                          value={block.language || ''}
-                          onChange={(e) => handleChangeBlockLanguage(block, e.target.value)}
-                          className="ml-auto text-xs border border-gray-200 rounded-md px-1.5 py-1 text-gray-600 bg-white cursor-pointer"
-                          title={t('topicDetail.codeLanguageHint')}
-                        >
-                          <option value="">{t('topicDetail.codeLanguageNone')}</option>
-                          <option value="cpp">C++</option>
-                          <option value="python">Python</option>
-                          <option value="java">Java</option>
-                          <option value="go">Go</option>
-                          <option value="javascript">JavaScript</option>
-                        </select>
+                        <div className="ml-auto flex items-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              if (sampleEditId === block.id) { setSampleEditId(null); return; }
+                              setSampleEditId(block.id);
+                              setSampleDraft(block.sample_input || '');
+                            }}
+                            className={`text-xs px-2 py-1 rounded-md border transition ${
+                              sampleEditId === block.id
+                                ? 'border-blue-400 bg-blue-50 text-blue-700'
+                                : block.sample_input
+                                ? 'border-green-200 bg-green-50 text-green-700'
+                                : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                            }`}
+                            title={t('topicDetail.sampleInputHint')}
+                          >
+                            {t('topicDetail.sampleInput')}
+                          </button>
+                          <select
+                            value={block.language || ''}
+                            onChange={(e) => handleChangeBlockLanguage(block, e.target.value)}
+                            className="text-xs border border-gray-200 rounded-md px-1.5 py-1 text-gray-600 bg-white cursor-pointer"
+                            title={t('topicDetail.codeLanguageHint')}
+                          >
+                            <option value="">{t('topicDetail.codeLanguageNone')}</option>
+                            <option value="cpp">C++</option>
+                            <option value="python">Python</option>
+                            <option value="java">Java</option>
+                            <option value="go">Go</option>
+                            <option value="javascript">JavaScript</option>
+                          </select>
+                        </div>
                       )}
                       {canEdit && (
                         <button
@@ -554,6 +587,35 @@ function TopicDetailContent() {
                         </button>
                       )}
                     </div>
+                    {sampleEditId === block.id && (
+                      <div className="mb-3 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                        <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                          {t('topicDetail.sampleInput')}
+                        </label>
+                        <textarea
+                          value={sampleDraft}
+                          onChange={(e) => setSampleDraft(e.target.value)}
+                          rows={3}
+                          spellCheck={false}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">{t('topicDetail.sampleInputHint')}</p>
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            onClick={() => handleSaveSampleInput(block)}
+                            className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700"
+                          >
+                            {t('topicDetail.saveTranslation')}
+                          </button>
+                          <button
+                            onClick={() => setSampleEditId(null)}
+                            className="text-xs text-gray-500 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-100"
+                          >
+                            {t('topicDetail.cancel')}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <ContentBlock block={localizeBlock(block)} />
                   </div>
                 ))}
@@ -1197,6 +1259,21 @@ function TopicDetailContent() {
                     <option value="javascript">JavaScript</option>
                   </select>
                   <p className="text-xs text-gray-400 mt-1">{t('topicDetail.codeLanguageHint')}</p>
+                </div>
+              )}
+
+              {contentType === 'code' && contentLanguage !== '' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('topicDetail.sampleInput')}</label>
+                  <textarea
+                    value={contentSampleInput}
+                    onChange={(e) => setContentSampleInput(e.target.value)}
+                    rows={3}
+                    spellCheck={false}
+                    placeholder={'3 5'}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">{t('topicDetail.sampleInputHint')}</p>
                 </div>
               )}
 

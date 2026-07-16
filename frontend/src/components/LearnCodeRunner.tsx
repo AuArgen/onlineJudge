@@ -24,24 +24,28 @@ interface RunResult {
 // LearnCodeRunner renders a lesson code block as an editable snippet that can
 // be executed against the judge's /run endpoint. Labels come from the URL
 // language (passed as a prop) so server and client render identically.
+// When the block has a sample input, it is pre-filled and shown right away,
+// so "Run" produces a meaningful result with zero typing.
 export default function LearnCodeRunner({
   initialCode,
   language,
   caption,
   lang,
+  sampleInput = '',
 }: {
   initialCode: string;
   language: string;
   caption?: string;
   lang: string;
+  sampleInput?: string;
 }) {
   const t = (key: string) => getTranslation(lang, key);
   const { user } = useAuth();
   const router = useRouter();
 
   const [code, setCode] = useState(initialCode);
-  const [stdin, setStdin] = useState('');
-  const [showStdin, setShowStdin] = useState(false);
+  const [stdin, setStdin] = useState(sampleInput);
+  const [showStdin, setShowStdin] = useState(sampleInput !== '');
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<RunResult | null>(null);
   const [error, setError] = useState('');
@@ -87,9 +91,9 @@ export default function LearnCodeRunner({
           <span className="text-xs text-gray-400 truncate hidden sm:inline">{t('learn.tryIt')}</span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {code !== initialCode && (
+          {(code !== initialCode || stdin !== sampleInput) && (
             <button
-              onClick={() => { setCode(initialCode); setResult(null); setError(''); }}
+              onClick={() => { setCode(initialCode); setStdin(sampleInput); setResult(null); setError(''); }}
               className="text-xs text-gray-400 hover:text-gray-200 transition"
             >
               {t('learn.reset')}
@@ -124,14 +128,16 @@ export default function LearnCodeRunner({
         className="block w-full bg-gray-900 text-gray-100 p-4 text-sm font-mono leading-relaxed resize-y focus:outline-none whitespace-pre overflow-x-auto"
       />
 
-      {/* Custom stdin */}
+      {/* Stdin: pre-filled with the block's sample input when it has one */}
       {showStdin && (
         <div className="border-t border-gray-700 bg-gray-900 px-4 py-3">
-          <label className="block text-xs text-gray-400 mb-1.5">{t('learn.stdin')}</label>
+          <label className="block text-xs text-gray-400 mb-1.5">
+            {sampleInput !== '' ? t('learn.stdinSample') : t('learn.stdin')}
+          </label>
           <textarea
             value={stdin}
             onChange={(e) => setStdin(e.target.value)}
-            rows={3}
+            rows={Math.min(Math.max(stdin.split('\n').length, 2), 8)}
             spellCheck={false}
             className="block w-full bg-gray-800 text-gray-100 rounded-lg p-3 text-sm font-mono resize-y focus:outline-none focus:ring-1 focus:ring-blue-500"
           />

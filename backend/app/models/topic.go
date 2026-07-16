@@ -38,9 +38,12 @@ type TopicContent struct {
 	Caption   string    `json:"caption"`
 	// Language of a code block (cpp, python, java, go, javascript). When set,
 	// the /learn lesson page renders the block as a runnable code editor.
-	Language  string    `json:"language"`
-	OrderNum  int       `json:"order_num"`
-	CreatedAt time.Time `json:"created_at"`
+	Language string `json:"language"`
+	// SampleInput is pre-filled into the runner's stdin field so readers can
+	// press "Run" and immediately see a meaningful result.
+	SampleInput string    `json:"sample_input"`
+	OrderNum    int       `json:"order_num"`
+	CreatedAt   time.Time `json:"created_at"`
 
 	Translations []TopicContentTranslation `gorm:"foreignKey:ContentID;constraint:OnDelete:CASCADE" json:"translations,omitempty"`
 }
