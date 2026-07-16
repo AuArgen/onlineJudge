@@ -1,12 +1,14 @@
 import type { LearnLang } from '@/lib/learn';
 import type { LessonPresentationData } from './types';
 import { complexityBigO } from './complexity-big-o';
+import { implementationProblems } from './implementation-problems';
 
 // Registry of lesson presentations, keyed by the lesson's slug. Decks are
 // authored one file per lesson in this directory; register them here to make
 // them appear on the lesson page.
 const registry: Record<string, LessonPresentationData> = {
   'complexity-big-o': complexityBigO,
+  'implementation-problems': implementationProblems,
 };
 
 // getLessonPresentation returns the deck for a lesson in the given language
