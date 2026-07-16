@@ -749,6 +749,25 @@ const dict: Record<string, Record<LangCode, string>> = {
   'learn.runError': { ru: 'Не удалось выполнить код', ky: 'Кодду аткаруу мүмкүн болгон жок', en: 'Failed to run code' },
   'learn.tryIt': { ru: 'Попробуйте сами — код можно менять', ky: 'Өзүңүз байкап көрүңүз — кодду өзгөртсө болот', en: 'Try it yourself — the code is editable' },
 
+  // Learn: lesson presentation player
+  'learn.presOpen': { ru: 'Смотреть презентацию', ky: 'Презентацияны көрүү', en: 'Watch the presentation' },
+  'learn.presHint': {
+    ru: 'Интерактивные слайды с анимацией — сразу во весь экран',
+    ky: 'Анимациялуу интерактивдүү слайддар — дароо толук экранда',
+    en: 'Interactive animated slides — opens fullscreen',
+  },
+  'learn.presSlides': { ru: 'Слайдов: {n}', ky: '{n} слайд', en: '{n} slides' },
+  'learn.presClose': { ru: 'Закрыть (Esc)', ky: 'Жабуу (Esc)', en: 'Close (Esc)' },
+  'learn.presFullscreen': { ru: 'Во весь экран (F)', ky: 'Толук экран (F)', en: 'Fullscreen (F)' },
+  'learn.presExitFullscreen': { ru: 'Свернуть (F)', ky: 'Кичирейтүү (F)', en: 'Exit fullscreen (F)' },
+  'learn.presNext': { ru: 'Далее', ky: 'Кийинки', en: 'Next' },
+  'learn.presPrev': { ru: 'Назад', ky: 'Артка', en: 'Back' },
+  'learn.presKeys': {
+    ru: '→ / пробел — далее · ← — назад · F — весь экран · Esc — выход',
+    ky: '→ / боштук — кийинки · ← — артка · F — толук экран · Esc — чыгуу',
+    en: '→ / space — next · ← — back · F — fullscreen · Esc — exit',
+  },
+
   // Learn: progress
   'learn.markComplete': { ru: 'Отметить урок пройденным', ky: 'Сабакты өттүм деп белгилөө', en: 'Mark lesson as completed' },
   'learn.completed': { ru: 'Урок пройден', ky: 'Сабак өтүлдү', en: 'Lesson completed' },

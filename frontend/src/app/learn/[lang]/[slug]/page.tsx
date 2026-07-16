@@ -7,6 +7,8 @@ import { linkifyText } from '@/lib/linkify';
 import { isLearnLang, learnAlternates, SITE_URL, type LearnLang } from '@/lib/learn';
 import LearnLangSync from '@/components/LearnLangSync';
 import LearnCodeRunner from '@/components/LearnCodeRunner';
+import LessonPresentation from '@/components/LessonPresentation';
+import { getLessonPresentation } from '@/data/presentations';
 import LearnChildList from '@/components/LearnChildList';
 import LearnProblemList, { type LearnProblemRow } from '@/components/LearnProblemList';
 import LessonCompleteButton from '@/components/LessonCompleteButton';
@@ -175,6 +177,7 @@ export default async function LearnTopicPage({ params }: { params: { lang: strin
 
   const { topic, children, problems, breadcrumbs, prev, next } = data;
   const contents = topic.contents || [];
+  const presentation = getLessonPresentation(params.slug, lang);
   const isEmpty = contents.length === 0 && children.length === 0 && problems.length === 0;
 
   const crumbs = [
@@ -247,6 +250,16 @@ export default async function LearnTopicPage({ params }: { params: { lang: strin
 
       <h1 className="text-3xl font-bold text-gray-900 mb-3">{topic.title}</h1>
       {topic.summary && <p className="text-gray-600 leading-relaxed mb-8">{topic.summary}</p>}
+
+      {/* Animated fullscreen presentation (when the lesson has a deck) */}
+      {presentation && (
+        <LessonPresentation
+          slides={presentation.slides}
+          accent={presentation.accent}
+          title={topic.title}
+          lang={lang}
+        />
+      )}
 
       {/* Content blocks */}
       {contents.length > 0 && (
