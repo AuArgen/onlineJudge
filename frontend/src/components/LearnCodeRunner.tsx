@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { API_URL } from '@/lib/api';
 import { getTranslation } from '@/lib/translations';
@@ -14,6 +14,19 @@ const LANGUAGE_LABELS: Record<string, string> = {
   javascript: 'JavaScript',
 };
 
+// Fixed display order for the language tabs.
+const LANGUAGE_ORDER = ['cpp', 'python', 'java', 'go', 'javascript'];
+
+// localStorage key for the reader's preferred example language: pick Python
+// once — every lesson opens its examples on the Python tab from then on.
+const PREF_KEY = 'learn-code-lang';
+
+export interface CodeVariant {
+  language: string;
+  content: string;
+  sample_input?: string;
+}
+
 interface RunResult {
   stdout: string;
   stderr: string;
@@ -24,33 +37,70 @@ interface RunResult {
 // LearnCodeRunner renders a lesson code block as an editable snippet that can
 // be executed against the judge's /run endpoint. Labels come from the URL
 // language (passed as a prop) so server and client render identically.
-// When the block has a sample input, it is pre-filled and shown right away,
-// so "Run" produces a meaningful result with zero typing.
+// When the block has a sample input, it is pre-filled and shown right away;
+// when it has variants in other programming languages, tabs let the reader
+// pick their language, and the choice is remembered across lessons.
 export default function LearnCodeRunner({
   initialCode,
   language,
   caption,
   lang,
   sampleInput = '',
+  variants = [],
 }: {
   initialCode: string;
   language: string;
   caption?: string;
   lang: string;
   sampleInput?: string;
+  variants?: CodeVariant[];
 }) {
   const t = (key: string) => getTranslation(lang, key);
   const { user } = useAuth();
   const router = useRouter();
 
-  const [code, setCode] = useState(initialCode);
-  const [stdin, setStdin] = useState(sampleInput);
-  const [showStdin, setShowStdin] = useState(sampleInput !== '');
+  // All language versions of this example, base language first in tab order.
+  const versions = useMemo<CodeVariant[]>(() => {
+    const all = [
+      { language, content: initialCode, sample_input: sampleInput },
+      ...variants.map((v) => ({ ...v, sample_input: v.sample_input || sampleInput })),
+    ];
+    return all.sort(
+      (a, b) => LANGUAGE_ORDER.indexOf(a.language) - LANGUAGE_ORDER.indexOf(b.language)
+    );
+  }, [language, initialCode, sampleInput, variants]);
+
+  const [active, setActive] = useState<CodeVariant>(
+    () => versions.find((v) => v.language === language) || versions[0]
+  );
+  const [code, setCode] = useState(active.content);
+  const [stdin, setStdin] = useState(active.sample_input || '');
+  const [showStdin, setShowStdin] = useState((active.sample_input || '') !== '');
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<RunResult | null>(null);
   const [error, setError] = useState('');
 
-  const rows = useMemo(() => Math.min(Math.max(initialCode.split('\n').length, 3), 22), [initialCode]);
+  const switchTo = (v: CodeVariant) => {
+    setActive(v);
+    setCode(v.content);
+    setStdin(v.sample_input || '');
+    setShowStdin((v.sample_input || '') !== '');
+    setResult(null);
+    setError('');
+  };
+
+  // After hydration, jump to the reader's remembered language if this
+  // example has it.
+  useEffect(() => {
+    const pref = localStorage.getItem(PREF_KEY);
+    if (pref && pref !== language) {
+      const v = versions.find((x) => x.language === pref);
+      if (v) switchTo(v);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const rows = useMemo(() => Math.min(Math.max(active.content.split('\n').length, 3), 22), [active]);
 
   const handleRun = async () => {
     if (!user) {
@@ -65,7 +115,7 @@ export default function LearnCodeRunner({
       const res = await fetch(`${API_URL}/run`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ language, source_code: code, stdin }),
+        body: JSON.stringify({ language: active.language, source_code: code, stdin }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -85,15 +135,36 @@ export default function LearnCodeRunner({
       {/* Header */}
       <div className="flex items-center justify-between gap-2 px-4 py-2 bg-gray-800 border-b border-gray-700">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-gray-700 text-gray-200 shrink-0">
-            {LANGUAGE_LABELS[language] || language}
-          </span>
+          {versions.length > 1 ? (
+            <div className="flex items-center gap-1 shrink-0">
+              {versions.map((v) => (
+                <button
+                  key={v.language}
+                  onClick={() => {
+                    localStorage.setItem(PREF_KEY, v.language);
+                    switchTo(v);
+                  }}
+                  className={`text-xs font-semibold px-2 py-0.5 rounded transition ${
+                    active.language === v.language
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  {LANGUAGE_LABELS[v.language] || v.language}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-gray-700 text-gray-200 shrink-0">
+              {LANGUAGE_LABELS[active.language] || active.language}
+            </span>
+          )}
           <span className="text-xs text-gray-400 truncate hidden sm:inline">{t('learn.tryIt')}</span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {(code !== initialCode || stdin !== sampleInput) && (
+          {(code !== active.content || stdin !== (active.sample_input || '')) && (
             <button
-              onClick={() => { setCode(initialCode); setStdin(sampleInput); setResult(null); setError(''); }}
+              onClick={() => { setCode(active.content); setStdin(active.sample_input || ''); setResult(null); setError(''); }}
               className="text-xs text-gray-400 hover:text-gray-200 transition"
             >
               {t('learn.reset')}
@@ -132,7 +203,7 @@ export default function LearnCodeRunner({
       {showStdin && (
         <div className="border-t border-gray-700 bg-gray-900 px-4 py-3">
           <label className="block text-xs text-gray-400 mb-1.5">
-            {sampleInput !== '' ? t('learn.stdinSample') : t('learn.stdin')}
+            {(active.sample_input || '') !== '' ? t('learn.stdinSample') : t('learn.stdin')}
           </label>
           <textarea
             value={stdin}

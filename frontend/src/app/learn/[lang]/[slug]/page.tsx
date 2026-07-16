@@ -30,6 +30,7 @@ interface LearnTopicResponse {
       caption: string;
       language?: string;
       sample_input?: string;
+      variants?: { language: string; content: string; sample_input?: string }[];
       order_num: number;
     }[] | null;
   };
@@ -80,7 +81,15 @@ function ContentBlock({
   block,
   lang,
 }: {
-  block: { id: number; type: string; content: string; caption: string; language?: string; sample_input?: string };
+  block: {
+    id: number;
+    type: string;
+    content: string;
+    caption: string;
+    language?: string;
+    sample_input?: string;
+    variants?: { language: string; content: string; sample_input?: string }[];
+  };
   lang: string;
 }) {
   switch (block.type) {
@@ -102,6 +111,7 @@ function ContentBlock({
             caption={block.caption}
             lang={lang}
             sampleInput={block.sample_input || ''}
+            variants={block.variants || []}
           />
         );
       }

@@ -46,6 +46,20 @@ type TopicContent struct {
 	CreatedAt   time.Time `json:"created_at"`
 
 	Translations []TopicContentTranslation `gorm:"foreignKey:ContentID;constraint:OnDelete:CASCADE" json:"translations,omitempty"`
+	Variants     []TopicContentVariant     `gorm:"foreignKey:ContentID;constraint:OnDelete:CASCADE" json:"variants,omitempty"`
+}
+
+// TopicContentVariant is the same runnable code example in another
+// programming language. The lesson page shows variants as language tabs so
+// readers can follow the course in the language they are learning.
+// SampleInput overrides the parent block's sample when set (e.g. Python
+// needs a smaller n for a performance demo).
+type TopicContentVariant struct {
+	ID          uint   `gorm:"primaryKey" json:"id"`
+	ContentID   uint   `gorm:"not null;uniqueIndex:idx_content_variant_lang" json:"content_id"`
+	Language    string `gorm:"not null;size:20;uniqueIndex:idx_content_variant_lang" json:"language"`
+	Content     string `json:"content"`
+	SampleInput string `json:"sample_input"`
 }
 
 // TopicProblem is the many-to-many join between topics and problems

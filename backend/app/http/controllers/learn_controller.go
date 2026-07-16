@@ -146,6 +146,7 @@ func GetLearnTopicBySlug(c *fiber.Ctx) error {
 	if err := database.DB.
 		Preload("Contents", func(db *gorm.DB) *gorm.DB { return db.Order("order_num asc, id asc") }).
 		Preload("Contents.Translations").
+		Preload("Contents.Variants").
 		Preload("Translations").
 		Preload("Problems", func(db *gorm.DB) *gorm.DB { return db.Order("order_num asc, id asc") }).
 		Preload("Problems.Problem").

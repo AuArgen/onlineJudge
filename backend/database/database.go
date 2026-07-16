@@ -53,6 +53,7 @@ func Connect() {
 		&models.TopicAccess{},
 		&models.TopicTranslation{},
 		&models.TopicContentTranslation{},
+		&models.TopicContentVariant{},
 		&models.TopicProgress{},
 	)
 	if err != nil {

@@ -25,11 +25,21 @@ type lessonContentSeed struct {
 	Problems []string
 }
 
+// codeVariantSeed is one code block's port to another language. Sample
+// overrides the parent block's sample input when set (e.g. a Python
+// performance demo needs a smaller n).
+type codeVariantSeed struct {
+	Code   string
+	Sample string
+}
+
 // SeedLearnContent fills official curriculum lessons with their seeded
 // content. Idempotent per lesson: blocks are only inserted into lessons
-// that have none, summaries only set when empty, and problems only attached
-// when the lesson has none — so admin edits are never overwritten.
+// that have none, summaries only set when empty, problems only attached
+// when the lesson has none, and language variants only created when
+// missing — so admin edits are never overwritten.
 func SeedLearnContent() {
+	variants := learnCodeVariants()
 	filled := 0
 	for slug, seed := range learnLessonContent() {
 		var topic models.Topic
@@ -58,6 +68,10 @@ func SeedLearnContent() {
 			filled++
 		} else if blockCount > 0 {
 			backfillSampleInputs(topic.ID, seed)
+		}
+
+		if perLang, ok := variants[slug]; ok {
+			applyCodeVariants(topic.ID, perLang)
 		}
 
 		var problemCount int64
@@ -111,6 +125,56 @@ func backfillSampleInputs(topicID uint, seed lessonContentSeed) {
 	}
 }
 
+// applyCodeVariants attaches language variants to a lesson's code blocks:
+// the k-th entry of a language's list belongs to the k-th code block.
+// Variants are only created when missing and never overwrite the block's
+// own language.
+func applyCodeVariants(topicID uint, perLang map[string][]codeVariantSeed) {
+	var blocks []models.TopicContent
+	DB.Where("topic_id = ? AND type = 'code'", topicID).
+		Order("order_num asc, id asc").
+		Find(&blocks)
+
+	for lang, list := range perLang {
+		for k := range blocks {
+			if k >= len(list) || list[k].Code == "" || blocks[k].Language == lang {
+				continue
+			}
+			var count int64
+			DB.Model(&models.TopicContentVariant{}).
+				Where("content_id = ? AND language = ?", blocks[k].ID, lang).
+				Count(&count)
+			if count > 0 {
+				continue
+			}
+			DB.Create(&models.TopicContentVariant{
+				ContentID:   blocks[k].ID,
+				Language:    lang,
+				Content:     list[k].Code,
+				SampleInput: list[k].Sample,
+			})
+		}
+	}
+}
+
+// learnCodeVariants maps lesson slug -> language -> per-code-block variant
+// list (aligned by code block position; empty Code = no variant).
+func learnCodeVariants() map[string]map[string][]codeVariantSeed {
+	out := map[string]map[string][]codeVariantSeed{}
+	add := func(lang string, m map[string][]codeVariantSeed) {
+		for slug, list := range m {
+			if out[slug] == nil {
+				out[slug] = map[string][]codeVariantSeed{}
+			}
+			out[slug][lang] = list
+		}
+	}
+	add("python", pythonRoadmapVariants())
+	add("java", javaRoadmapVariants())
+	add("go", goRoadmapVariants())
+	return out
+}
+
 // learnLessonContent maps lesson slugs to their seeded bodies. Content is in
 // Russian (the platform's base content language); Kyrgyz and English are
 // produced per lesson via the built-in AI translation.
@@ -123,6 +187,7 @@ func learnLessonContent() map[string]lessonContentSeed {
 	addRoadmapLevel12Content(m)
 	addRoadmapLevel34Content(m)
 	addRoadmapLevel56Content(m)
+	addRoadmapOverviewContent(m)
 	applySampleInputs(m)
 	return m
 }
