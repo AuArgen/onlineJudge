@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import { ToastProvider } from "@/components/ToastProvider";
 import { AuthProvider } from "@/components/AuthProvider";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import GlobalWhiteboard from "@/components/whiteboard/GlobalWhiteboard";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -36,6 +37,7 @@ export default function RootLayout({
               {children}
             </main>
             <Footer />
+            <GlobalWhiteboard />
           </ToastProvider>
           </LanguageProvider>
         </AuthProvider>

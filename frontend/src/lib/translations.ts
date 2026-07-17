@@ -798,6 +798,26 @@ const dict: Record<string, Record<LangCode, string>> = {
     ky: 'Расмий жалпы темалар ачык /learn бөлүмүндө көрсөтүлүп, издөө системалары тарабынан индекстелет.',
     en: 'Official public topics appear in the public /learn section and are indexed by search engines.',
   },
+
+  // Whiteboard
+  'board.title': { ru: 'Доска', ky: 'Доска', en: 'Board' },
+  'board.open': { ru: 'Открыть доску', ky: 'Досканы ачуу', en: 'Open board' },
+  'board.close': { ru: 'Закрыть', ky: 'Жабуу', en: 'Close' },
+  'board.clear': { ru: 'Очистить доску', ky: 'Досканы тазалоо', en: 'Clear board' },
+  'board.clearConfirm': {
+    ru: 'Очистить доску? Все рисунки будут удалены.',
+    ky: 'Доска тазалансынбы? Бардык чиймелер өчүрүлөт.',
+    en: 'Clear the board? All drawings will be deleted.',
+  },
+  'board.bgWhite': { ru: 'Белый фон', ky: 'Ак фон', en: 'White background' },
+  'board.bgTransparent': { ru: 'Прозрачный фон', ky: 'Тунук фон', en: 'Transparent background' },
+  'board.fullscreen': { ru: 'На весь экран', ky: 'Толук экран', en: 'Fullscreen' },
+  'board.sidePanel': { ru: 'Боковая панель', ky: 'Каптал панель', en: 'Side panel' },
+  'board.savedLocally': {
+    ru: 'сохраняется в браузере',
+    ky: 'браузерде сакталат',
+    en: 'saved in your browser',
+  },
 };
 
 export function getTranslation(lang: string, key: string): string {
