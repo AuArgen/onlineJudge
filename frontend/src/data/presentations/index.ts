@@ -5,6 +5,7 @@ import { implementationProblems } from './implementation-problems';
 import { basicMath } from './basic-math';
 import { sorting } from './sorting';
 import { twoPointers } from './two-pointers';
+import { prefixSums } from './prefix-sums';
 
 // Registry of lesson presentations, keyed by the lesson's slug. Decks are
 // authored one file per lesson in this directory; register them here to make
@@ -15,6 +16,7 @@ const registry: Record<string, LessonPresentationData> = {
   'basic-math': basicMath,
   sorting: sorting,
   'two-pointers': twoPointers,
+  'prefix-sums': prefixSums,
 };
 
 // getLessonPresentation returns the deck for a lesson in the given language
