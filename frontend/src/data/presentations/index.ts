@@ -7,6 +7,11 @@ import { sorting } from './sorting';
 import { twoPointers } from './two-pointers';
 import { prefixSums } from './prefix-sums';
 import { binarySearch } from './binary-search';
+import { stackQueue } from './stack-queue';
+import { setsMaps } from './sets-maps';
+import { recursionBacktracking } from './recursion-backtracking';
+import { greedy } from './greedy';
+import { dsu } from './dsu';
 
 // Registry of lesson presentations, keyed by the lesson's slug. Decks are
 // authored one file per lesson in this directory; register them here to make
@@ -19,6 +24,11 @@ const registry: Record<string, LessonPresentationData> = {
   'two-pointers': twoPointers,
   'prefix-sums': prefixSums,
   'binary-search': binarySearch,
+  'stack-queue': stackQueue,
+  'sets-maps': setsMaps,
+  'recursion-backtracking': recursionBacktracking,
+  greedy: greedy,
+  dsu: dsu,
 };
 
 // getLessonPresentation returns the deck for a lesson in the given language
