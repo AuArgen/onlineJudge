@@ -446,6 +446,44 @@
 }
 .lp-code .cm { color: #64748b; }
 
+/* Mock terminal (cpp-first-program: shows the program "running") */
+.lp-term {
+  background: #05070f;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-top: 8px;
+  text-align: left;
+}
+.lp-term-bar {
+  display: flex;
+  gap: 6px;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.lp-term-bar span {
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.lp-term-body {
+  padding: 12px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(0.78rem, 1.6vw, 0.98rem);
+}
+.lp-term-line {
+  color: #a7f3d0;
+  line-height: 1.7;
+}
+.lp-term-prompt {
+  color: #64748b;
+}
+.lp-term-prompt::before {
+  content: '$ ';
+}
+
 /* Race bars */
 .lp-race {
   margin-top: clamp(12px, 2.2vh, 22px);
